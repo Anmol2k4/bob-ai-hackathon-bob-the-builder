@@ -1,21 +1,36 @@
 # Problem Statement
 
-## Background
+## Context
 
-Clinical trial operations teams monitor sites across repeated visits, protocol rules, patients, labs, and administrative records. A site's operational risk is not only the number of deviations recorded; it also depends on whether deviations are accelerating, concentrated around one protocol rule, and supported by enough monitoring history to justify action.
+Clinical trials produce enormous volumes of protocol compliance data: visit records, dosage logs, medication histories, assessment results, and data-entry timestamps. Risk managers are responsible for monitoring this data across dozens of sites and thousands of patients — and for intervening before problems become audit findings.
 
 ## The Problem
 
-Teams can report yesterday's deviations but cannot quickly determine which site is becoming tomorrow's problem. Risk signals are distributed across protocol documents and operational records, so investigators spend time assembling context instead of deciding which site to investigate and what intervention to test.
+**Operations teams can see yesterday's deviations. They cannot easily see which site is becoming tomorrow's problem.**
 
-## Who Is Affected
+Specific pain points:
 
-Clinical operations leads, site managers, monitors, and quality teams responsible for prioritizing oversight across multiple trial sites are affected. They need an auditable explanation for a decision, not a black-box score or a raw deviation count.
+1. **Reactive monitoring** — deviations are detected late, after audits or sponsor visits, not during the monitoring period when intervention is still effective.
 
-## Why It Matters
+2. **Disconnected evidence** — protocol rules, visit records, and deviation logs are often in separate systems; making the connection between a rule violation and a patient record requires manual effort.
 
-Late recognition of an emerging site problem can consume monitoring capacity, delay corrective action, and increase the chance that recurring process failures continue into later monitoring periods. A transparent early-warning workflow lets a small team focus scarce attention where the trajectory and evidence justify it.
+3. **No leading indicators** — existing tools count deviations but do not distinguish accelerating patterns, recurring deviation types, or compounding risk.
 
-## Why Existing Solutions Fall Short
+4. **Opaque risk scores** — when risk scores exist, their reasoning is rarely transparent; risk managers cannot explain to sites or sponsors why a score is high.
 
-Basic dashboards rank sites by current deviation counts, which can over-prioritize large sites and miss low-volume sites whose risk is accelerating. Generic AI summaries may explain a pattern without showing the exact rule and evidence behind it. This project joins deterministic checks, trend signals, traceable evidence, and scenario testing in one decision path.
+5. **Manual CAPA creation** — corrective and preventive action plans are drafted manually from scratch, even when the evidence clearly points to a recurring pattern.
+
+6. **No AI investigation layer** — there is no natural-language way to interrogate the evidence: "Is this trend isolated or systemic?" "What should I do first?"
+
+## Impact
+
+Sites that go unmonitored until audit consume disproportionate sponsor resources, create data integrity risk, and — in the worst case — put patient safety at risk through dosing errors or missed assessments.
+
+## Scope
+
+This prototype addresses the problem within the constraints of a hackathon demonstration:
+
+- All data is synthetic. No real patient data is used.
+- The severity framework and risk scoring are prototype prioritization tools, not regulatory guidance.
+- The IBM Bob integration boundary is a demo adapter; live IBM Bob connectivity is the intended next step.
+- The application is not a medical device, regulatory submission tool, or replacement for qualified clinical professionals.

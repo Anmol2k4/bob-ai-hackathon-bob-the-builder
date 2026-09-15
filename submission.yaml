@@ -13,27 +13,28 @@ team:
       email: "24dcs116@charusat.edu.in"
 
 submission:
-  title: "Clinical Trial Risk Intelligence Copilot"
+  title: "TrialGuard AI — Clinical Trial Risk Monitor & Protocol Deviation Detector"
   problem_statement: >
-    Clinical trial operations teams can see yesterday's deviations, but struggle to identify which site is becoming tomorrow's problem. Fragmented protocol rules, deviation records and monitoring history make it difficult to prove why risk is rising or choose an intervention with confidence.
+    Clinical trial operations teams can see yesterday's deviations but cannot identify which site is becoming tomorrow's problem. Fragmented protocol rules, deviation records, and monitoring history make it difficult to prove why risk is rising or choose an intervention with confidence.
   solution_summary: >
-    Clinical Trial Risk Intelligence Copilot turns verified protocol rules and synthetic site data into an evidence-backed risk radar. It combines transparent risk trends, an evidence chain, IBM Bob investigation, intervention simulation and CAPA-ready decisions in one workflow.
+    TrialGuard AI monitors 42 synthetic clinical sites, compares patient and visit data against protocol rules using a deterministic deviation engine, classifies severity using a transparent 6-factor scoring model, and calculates a multi-factor site risk score with leading indicators and predictive trend. The IBM Bob boundary exposes 13 MCP-ready tool contracts so an AI agent can answer evidence-backed, permission-scoped questions and generate CAPA records.
   key_features:
-    - "CUSUM-style emerging-risk radar that prioritizes deteriorating sites"
-    - "Deterministic protocol compliance with rule-linked evidence records"
-    - "IBM Bob and MCP investigation boundary for evidence-backed answers"
-    - "Scenario simulator that projects the impact of reducing a dominant driver"
-    - "Confidence-aware intelligence using data quality and monitoring history"
+    - "Deterministic rule-based deviation detection across 8 protocol rules and 7 deviation types"
+    - "Transparent 6-factor severity classification (MAJOR/MINOR/ADMINISTRATIVE) with per-factor breakdown"
+    - "Multi-factor site risk engine with leading indicators, 6-period sparkline, and predictive scoring"
+    - "IBM Bob integration boundary with 13 MCP-ready tool contracts, role-scoped, evidence-grounded answers"
+    - "Evidence-linked CAPA generation with deviation-type-specific corrective and preventive actions"
+    - "Server-side RBAC (4 roles), audit trail, MongoDB + in-memory fallback, full enterprise SPA"
   tech_stack:
     languages: ["Python", "JavaScript", "HTML", "CSS"]
-    frameworks: ["Python standard-library HTTP server"]
-    ibm_technologies: ["IBM Bob", "MCP integration boundary"]
-    databases: ["Planned SQLite evidence store"]
-    other: ["Synthetic clinical-trial data", "GitHub Actions"]
+    frameworks: ["Python standard-library HTTP server (no external web framework)"]
+    ibm_technologies: ["IBM Bob MCP integration boundary (demo adapter; ready for live endpoint)"]
+    databases: ["MongoDB", "PyMongo", "Deterministic in-memory fallback"]
+    other: ["Deterministic synthetic clinical-trial data (seed=37037)", "PBKDF2-SHA256 sessions", "Chart.js"]
   what_we_are_most_proud_of: >
-    The demo follows one complete decision loop: find the fastest-deteriorating site, prove the driver through linked evidence, ask Bob why it is risky, and test a documented intervention before creating an action.
+    The end-to-end decision loop: log in as Study Manager, see S037 at 87/100 WORSENING on the dashboard, open the deviation showing 100 mg expected vs 150 mg actual with severity score 14/25, ask IBM Bob why the site is high risk and get an answer grounded in the database (not hallucinated), ask what to do and get specific corrective actions, generate CAPA-0001, and see every action in the audit trail — all in under 5 minutes.
   known_limitations: >
-    This first runnable slice uses deterministic seeded synthetic data and a local Bob response adapter. Live PDF protocol extraction, persistent SQLite storage, authenticated IBM Bob calls, CAPA persistence and production deployment remain planned follow-up work.
+    Uses a local Demo Bob Adapter (not live IBM Bob). MongoDB fallback to in-memory means data does not persist across server restarts unless MongoDB is running. Production deployment, TLS, durable session store, live IBM Bob/MCP wiring, and formal clinical validation are future work.
 
 artifacts:
   source_code: "src/"

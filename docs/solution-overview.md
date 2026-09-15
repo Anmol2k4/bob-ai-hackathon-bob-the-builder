@@ -1,48 +1,74 @@
-# Solution Overview
+# Solution Overview — TrialGuard AI
 
-## What We Built
+## One-line Summary
 
-Clinical Trial Risk Intelligence Copilot is an evidence-first operational radar for synthetic clinical-trial data. It answers four questions in sequence: where should I look, why does this site need attention, what happens if we intervene, and how will we verify the next period?
+TrialGuard AI combines deterministic protocol deviation detection, transparent site risk scoring, predictive trend analysis, and an IBM Bob investigation boundary into one clinical-trial monitoring workflow.
 
-## How It Works
+## The Decision Loop
 
-1. The application loads a deliberately constructed synthetic trial dataset with sites, monitoring periods, protocol rules, deviations, and evidence IDs.
-2. Verified rules feed a deterministic compliance and evidence model. Every hero-site deviation points back to a rule, patient, period, and evidence record.
-3. The risk engine ranks sites using current burden, normalized peer comparison, trend velocity, acceleration, and risk concentration. CUSUM-style emerging-risk behavior is the primary early-warning signal.
-4. Site Intelligence explains S037's risk: recurring V3 scheduling deviations make up 72% of the burden and are rising across five periods.
-5. IBM Bob is given a focused investigation boundary through MCP-ready tools. The demo response cites the risk engine, evidence store, and rule R-03.
-6. The Scenario Lab models a 30% reduction in the dominant driver and returns a projected risk and status change.
-7. The next implementation step is to turn the tested scenario into an evidence-linked CAPA and re-measure it in the following seeded monitoring period.
-
-## Architecture Diagram
-
-See [architecture.md](architecture.md) for the detailed view.
-
-```mermaid
-flowchart LR
-  U[Operations lead] --> UI[Trial Risk Radar]
-  UI --> API[Python API]
-  API --> R[Risk and simulation engine]
-  API --> E[Evidence and rule store]
-  B[IBM Bob] --> MCP[MCP investigation tools]
-  MCP --> API
-  R --> UI
-  E --> UI
+```
+FIND   → Which site should I look at next?
+PROVE  → Why is it risky? What's the evidence?
+PREDICT→ Is this getting worse or better?
+TEST   → What happens if I take action?
+ACT    → Generate CAPA, assign owner, set due date.
 ```
 
-## Key Design Decisions
+Each step is handled by a different component of the application, and all steps are reachable from the Ask IBM Bob panel in a single conversation.
 
-| Decision | Rationale |
-|---|---|
-| Use deterministic compliance checks | A recommendation must be reproducible and traceable to a verified rule. |
-| Make velocity primary for emerging risk | Raw counts alone miss sites whose burden is accelerating. |
-| Keep evidence visible beside every explanation | Investigators need to prove a finding, not only receive a score. |
-| Simulate before recommending action | The team can compare a targeted intervention with its projected operational impact. |
-| Seed synthetic data with a clear narrative | The demo is repeatable without exposing clinical or patient information. |
+## Key Differentiators
 
-## IBM Technologies Used
+### 1. Deterministic Deviation Detection
 
-- **IBM Bob:** The intended natural-language investigator experience. Bob asks focused questions such as why S037 is becoming risky and receives an evidence-backed answer.
-- **MCP:** The integration boundary for structured investigation tools that retrieve risk, drivers, evidence, and scenario results from one backend source of truth.
+A rule-based engine compares every synthetic visit and medication record against 8 protocol rules. Each deviation includes:
 
-The local prototype keeps this boundary dependency-free so the core workflow is demonstrable without committing credentials.
+- What was expected (the protocol rule)
+- What actually happened (the patient record)
+- Which rule was violated and why
+- Severity score with a factor-by-factor breakdown
+
+This is not ML inference. Every finding is traceable to a specific comparison.
+
+### 2. Transparent Severity Classification
+
+Severity is calculated from 6 configurable factors (safety impact, data integrity, protocol criticality, participant rights, magnitude, recurrence). The score and each contributing factor are shown to the user. The disclaimer that these are prototype thresholds — not ICH/FDA guidance — is always displayed.
+
+### 3. Predictive Site Risk
+
+Site risk is a multi-factor score (0–100) that goes beyond counting deviations:
+
+- Weighted heavily by major deviation count
+- Penalises recurring deviation types (same problem repeating = systemic risk)
+- Detects recent acceleration (more major findings in recent periods vs earlier)
+- Generates a 6-period sparkline showing the trajectory
+
+The predicted score for the next monitoring period is displayed with clear language: "projected", "estimated", "risk indicator".
+
+### 4. IBM Bob Integration Boundary
+
+The Bob boundary is the primary differentiator for the AI track:
+
+- 13 MCP-ready tool contracts with input/output schemas
+- Every Bob answer is grounded in a tool result — no hallucination
+- User permissions are inherited by Bob (site coordinator cannot ask Bob about other sites)
+- The Demo Adapter is clearly labelled as not IBM Bob
+- Replacing it with a real IBM Bob MCP endpoint requires one code change
+
+### 5. CAPA Generation
+
+CAPA records are generated from actual deviations. The system:
+
+- Identifies the dominant deviation type for the site
+- Generates a specific problem statement from the evidence
+- Provides deviation-type-specific corrective and preventive actions (7 sets)
+- Labels root-cause hypotheses as AI-generated suggestions requiring qualified review
+- Records the CAPA creation in the audit trail
+
+## What Is Out of Scope (Prototype Limitations)
+
+- Live IBM Bob connectivity (demo adapter used)
+- Real-time data ingestion (synthetic seed data only)
+- PDF/DOCX report export (HTML print-friendly reports)
+- Multi-trial support (single TG-101 protocol)
+- Regulatory submission workflow
+- Real patient data (strictly prohibited)
