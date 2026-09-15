@@ -83,6 +83,10 @@ def classify_severity(factors: dict[str, int]) -> dict:
 
 # ─── deviation detection engine ───────────────────────────────────────────────
 
+# Expected visit numbers per protocol visit schedule
+_EXPECTED_VISIT_NUMBERS = {1, 2, 3, 4, 5}
+
+
 def run_deviation_engine(
     protocols: list[dict],
     patients: list[dict],
@@ -93,6 +97,16 @@ def run_deviation_engine(
     Rule-based deterministic protocol deviation engine.
     Compares patient/visit/medication data against protocol rules.
     Returns a list of detected deviations with full evidence.
+
+    Deviation types detected:
+      R-001  ELIGIBILITY_VIOLATION    — patient age outside 18-65
+      R-002  VISIT_OUTSIDE_WINDOW     — visit 2 out of ±2 day window
+      R-003  INCORRECT_DOSE           — dose != 100 mg
+      R-004  PROHIBITED_MEDICATION    — Drug X or Drug Y administered
+      R-005  MISSING_ASSESSMENT       — required safety assessment absent
+      R-006  LATE_DATA_ENTRY          — EDC entry > 48 h after visit
+      R-007  VISIT_OUTSIDE_WINDOW     — visit 3 out of ±2 day window
+      R-008  MISSED_VISIT             — scheduled visit absent from records
     """
     if not protocols:
         return []
@@ -135,6 +149,22 @@ def run_deviation_engine(
                     factors={"safety_impact": 1, "data_integrity": 3, "protocol_criticality": 2,
                              "participant_rights": 1, "magnitude": min(diff // 2, 3), "recurrence": 0},
                     rule_id="R-002", protocol_id=protocol.get("protocol_id", "TG-101"),
+                    detected_at=visit.get("actual_date"),
+                ))
+
+        # Rule R-007: Visit window (visit 3 = Day 14 ± 2)
+        if visit_num == 3 and scheduled and actual_dt:
+            diff = abs((actual_dt - scheduled).days)
+            if diff > 2:
+                deviations.append(_make_deviation(
+                    patient_id=pid, site_id=site_id,
+                    dtype="VISIT_OUTSIDE_WINDOW",
+                    description=f"Visit {visit_num} occurred {diff} days outside allowed window (±2 days)",
+                    expected=f"Visit {visit_num} within Day 14 ± 2 days of scheduled date",
+                    actual=f"Visit occurred {diff} days outside window",
+                    factors={"safety_impact": 1, "data_integrity": 3, "protocol_criticality": 2,
+                             "participant_rights": 1, "magnitude": min(diff // 2, 3), "recurrence": 0},
+                    rule_id="R-007", protocol_id=protocol.get("protocol_id", "TG-101"),
                     detected_at=visit.get("actual_date"),
                 ))
 
@@ -203,6 +233,32 @@ def run_deviation_engine(
                          "participant_rights": 3, "magnitude": 3, "recurrence": 0},
                 rule_id="R-004", protocol_id=protocol.get("protocol_id", "TG-101"),
             ))
+
+    # Rule R-008: Missed visits — detect patients whose visit records are incomplete
+    # A visit is missed when it is absent from the visit list entirely (not rescheduled within window).
+    visits_by_patient: dict[str, set[int]] = {}
+    for visit in visits:
+        pid = visit["patient_id"]
+        visits_by_patient.setdefault(pid, set()).add(visit.get("visit_number", 0))
+
+    for patient in patients:
+        pid = patient["patient_id"]
+        if patient.get("status") == "WITHDRAWN":
+            continue
+        site_id = patient.get("site_id", "UNKNOWN")
+        recorded = visits_by_patient.get(pid, set())
+        for vnum in _EXPECTED_VISIT_NUMBERS:
+            if vnum not in recorded:
+                deviations.append(_make_deviation(
+                    patient_id=pid, site_id=site_id,
+                    dtype="MISSED_VISIT",
+                    description=f"Visit {vnum} not recorded for patient — scheduled visit has no attendance record",
+                    expected=f"Visit {vnum} completed or rescheduled within protocol window (rule R-008)",
+                    actual="Visit record absent",
+                    factors={"safety_impact": 2, "data_integrity": 3, "protocol_criticality": 2,
+                             "participant_rights": 2, "magnitude": 1, "recurrence": 0},
+                    rule_id="R-008", protocol_id=protocol.get("protocol_id", "TG-101"),
+                ))
 
     return deviations
 

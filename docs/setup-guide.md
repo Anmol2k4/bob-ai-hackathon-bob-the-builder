@@ -78,7 +78,7 @@ The seed script (`src/seed.py`) generates:
 - 1128 synthetic patients
 - ~5100 synthetic visits
 - ~1250 synthetic medication records
-- ~915 protocol deviations (detected by the rule-based engine)
+- ~975 protocol deviations (detected by the rule-based engine across all 8 rules, 7 deviation types)
 - 42 site risk scores
 - 3 pre-seeded CAPA records
 - 4 demo users

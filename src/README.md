@@ -44,7 +44,7 @@ Open http://127.0.0.1:8000 in your browser.
 | `database.py`      | `MongoRepository` + `MemoryRepository` — auto-falls back if no Mongo    |
 | `models.py`        | `RepositoryState`, `User`, `COLLECTIONS`, `ROLES` contracts             |
 | `security.py`      | PBKDF2-SHA256 password hashing and verification                         |
-| `synthetic_data.py`| Fixed-seed deterministic generator (42 sites, 1128 patients, ~915 devs) |
+| `synthetic_data.py`| Fixed-seed deterministic generator (42 sites, 1128 patients, ~975 devs, 7 deviation types) |
 | `engines.py`       | Deviation detection engine, severity classifier, site risk engine       |
 | `services.py`      | CAPA record generator with type-specific corrective/preventive actions  |
 | `bob_boundary.py`  | 13 MCP-ready tool contracts, `build_bob_tools()`, `LocalDemoBobProvider`|
@@ -60,7 +60,7 @@ Open http://127.0.0.1:8000 in your browser.
 ### Tests
 
 ```bash
-# Run all 93 tests
+# Run all 100 tests
 python -m unittest src/tests/test_core.py -v
 ```
 
@@ -82,7 +82,7 @@ python -m unittest src/tests/test_core.py -v
 | Variable            | Default                    | Description                          |
 |---------------------|----------------------------|--------------------------------------|
 | `MONGODB_URI`       | `mongodb://localhost:27017` | MongoDB connection string            |
-| `MONGODB_DATABASE`  | `trialguard_demo`           | Database name                        |
+| `MONGODB_DATABASE`  | `trialguard`                | Database name                        |
 | `SESSION_SECRET`    | `change-me-in-production`   | Session token signing secret         |
 | `APP_HOST`          | `127.0.0.1`                 | Bind address                         |
 | `APP_PORT`          | `8000`                      | HTTP port                            |

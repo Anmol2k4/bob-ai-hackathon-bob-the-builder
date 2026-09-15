@@ -58,7 +58,7 @@ CAPA generation
 
 | Feature | Description |
 |---|---|
-| **Deviation Detection** | Rule-based engine compares visits/meds against 8 protocol rules; detects 7 deviation types |
+| **Deviation Detection** | Rule-based engine evaluates all 8 protocol rules (R-001–R-008); detects 7 deviation types |
 | **Severity Classification** | Transparent 6-factor prototype scoring (safety, data integrity, criticality, rights, magnitude, recurrence) |
 | **Site Risk Engine** | Multi-factor score (0–100) with leading indicators, trend, and 6-period sparkline |
 | **Predictive Risk** | Projected score for next monitoring period with worsening/improving/stable trend |
@@ -129,7 +129,7 @@ python src/server.py
 ## Demo Flow (3–5 minutes)
 
 1. Log in as **manager@trialguard.demo**
-2. Dashboard: 42 sites · 1128 patients · 915 deviations · 16 high-risk sites
+2. Dashboard: 42 sites · 1128 patients · 975 deviations · 16 high-risk sites
 3. High-Risk Sites table → click **Investigate** on **S037**
 4. Site detail: Risk Score **87/100** · Level **HIGH** · Trend **WORSENING**
 5. Leading indicators: Repeated dosing deviations · Increasing missed visits · Data-entry delays

@@ -116,7 +116,7 @@ Both implement:
 | `protocols` | TG-101 protocol with 8 rules |
 | `visits` | ~5100 visit records per patient |
 | `medications` | ~1250 concomitant medication records |
-| `deviations` | ~915 protocol deviations with evidence |
+| `deviations` | ~975 protocol deviations with evidence (7 types, all 8 rules evaluated) |
 | `risk_scores` | 42 site risk scores with leading indicators |
 | `capa_records` | CAPA records linked to deviations |
 | `audit_events` | All system events |

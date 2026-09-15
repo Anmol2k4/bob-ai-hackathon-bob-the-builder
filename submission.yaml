@@ -17,7 +17,7 @@ submission:
   problem_statement: >
     Clinical trial operations teams can see yesterday's deviations but cannot identify which site is becoming tomorrow's problem. Fragmented protocol rules, deviation records, and monitoring history make it difficult to prove why risk is rising or choose an intervention with confidence.
   solution_summary: >
-    TrialGuard AI monitors 42 synthetic clinical sites, compares patient and visit data against protocol rules using a deterministic deviation engine, classifies severity using a transparent 6-factor scoring model, and calculates a multi-factor site risk score with leading indicators and predictive trend. The IBM Bob boundary exposes 13 MCP-ready tool contracts so an AI agent can answer evidence-backed, permission-scoped questions and generate CAPA records.
+    TrialGuard AI monitors 42 synthetic clinical sites, evaluates all 8 protocol rules across patient and visit data using a deterministic deviation engine (producing ~975 deviations across 7 types), classifies severity using a transparent 6-factor scoring model, and calculates a multi-factor site risk score with leading indicators and predictive trend. The IBM Bob boundary exposes 13 MCP-ready tool contracts so an AI agent can answer evidence-backed, permission-scoped questions and generate CAPA records.
   key_features:
     - "Deterministic rule-based deviation detection across 8 protocol rules and 7 deviation types"
     - "Transparent 6-factor severity classification (MAJOR/MINOR/ADMINISTRATIVE) with per-factor breakdown"

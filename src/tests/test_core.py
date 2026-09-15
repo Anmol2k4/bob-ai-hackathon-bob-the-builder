@@ -242,9 +242,11 @@ class TestDeviationEngine(unittest.TestCase):
         }
 
     def test_no_deviations_when_compliant(self):
+        """A fully-compliant patient with all 5 visits present must produce zero deviations."""
         p = self._patient("P001")
-        v = self._visit("P001")
-        devs = self._run([p], [v])
+        # Provide all 5 scheduled visits so R-008 (no missed visits) is satisfied
+        visits = [self._visit("P001", visit_num=vn) for vn in range(1, 6)]
+        devs = self._run([p], visits)
         self.assertEqual(len(devs), 0)
 
     def test_incorrect_dose_detected(self):
@@ -365,6 +367,59 @@ class TestDeviationEngine(unittest.TestCase):
         types = {d["type"] for d in devs}
         self.assertIn("INCORRECT_DOSE", types)
         self.assertIn("MISSING_ASSESSMENT", types)
+
+    def test_r007_visit3_outside_window_detected(self):
+        """Rule R-007: Visit 3 outside Day 14 ±2 day window must be flagged."""
+        p = self._patient("P019")
+        v = self._visit("P019", visit_num=3,
+                        sched="2025-01-14", actual="2025-01-20")  # 6 days off
+        devs = self._run([p], [v])
+        types = [d["type"] for d in devs]
+        self.assertIn("VISIT_OUTSIDE_WINDOW", types)
+        matching = [d for d in devs if d["type"] == "VISIT_OUTSIDE_WINDOW"]
+        self.assertTrue(any(d["evidence"]["rule_id"] == "R-007" for d in matching))
+
+    def test_r007_visit3_within_window_not_flagged(self):
+        """Rule R-007: Visit 3 within ±2 days must not be flagged."""
+        p = self._patient("P020")
+        v = self._visit("P020", visit_num=3,
+                        sched="2025-01-14", actual="2025-01-15")  # 1 day off — OK
+        devs = self._run([p], [v])
+        window_devs = [d for d in devs if d["type"] == "VISIT_OUTSIDE_WINDOW"]
+        r007 = [d for d in window_devs if d["evidence"]["rule_id"] == "R-007"]
+        self.assertEqual(len(r007), 0)
+
+    def test_r008_missed_visit_detected(self):
+        """Rule R-008: A visit absent from patient records must be flagged as MISSED_VISIT."""
+        # Patient has only visit 1 — visits 2-5 are missing
+        p = self._patient("P021")
+        v = self._visit("P021", visit_num=1)
+        devs = self._run([p], [v])
+        types = [d["type"] for d in devs]
+        self.assertIn("MISSED_VISIT", types)
+
+    def test_r008_missed_visit_rule_id(self):
+        """Rule R-008: MISSED_VISIT deviations must reference rule R-008."""
+        p = self._patient("P022")
+        v = self._visit("P022", visit_num=1)
+        devs = self._run([p], [v])
+        missed = [d for d in devs if d["type"] == "MISSED_VISIT"]
+        self.assertGreater(len(missed), 0)
+        for d in missed:
+            self.assertEqual(d["evidence"]["rule_id"], "R-008")
+
+    def test_r008_no_missed_visits_when_all_present(self):
+        """Rule R-008: No MISSED_VISIT when all 5 scheduled visits are recorded."""
+        p = self._patient("P023")
+        visits = [self._visit("P023", visit_num=vn) for vn in range(1, 6)]
+        devs = self._run([p], visits)
+        self.assertFalse(any(d["type"] == "MISSED_VISIT" for d in devs))
+
+    def test_r008_withdrawn_patients_excluded(self):
+        """Rule R-008: Withdrawn patients must not generate MISSED_VISIT deviations."""
+        p = {"patient_id": "P024", "site_id": "S001", "age": 35, "status": "WITHDRAWN"}
+        devs = self._run([p], [])
+        self.assertFalse(any(d["type"] == "MISSED_VISIT" for d in devs))
 
 
 # ─── 6. Severity classification ───────────────────────────────────────────────
@@ -629,7 +684,18 @@ class TestDataIntegrity(_FixtureBase):
         self.assertGreater(len(self.state.patients), 1000)
 
     def test_over_500_deviations(self):
-        self.assertGreater(len(self.state.deviations), 500)
+        self.assertGreater(len(self.state.deviations), 900)
+
+    def test_all_seven_deviation_types_present(self):
+        """All 7 protocol deviation types must appear in the seeded dataset."""
+        expected_types = {
+            "ELIGIBILITY_VIOLATION", "VISIT_OUTSIDE_WINDOW", "INCORRECT_DOSE",
+            "PROHIBITED_MEDICATION", "MISSING_ASSESSMENT", "LATE_DATA_ENTRY",
+            "MISSED_VISIT",
+        }
+        actual_types = {d["type"] for d in self.state.deviations}
+        missing = expected_types - actual_types
+        self.assertEqual(missing, set(), f"Missing deviation types in dataset: {missing}")
 
     def test_dataset_is_deterministic(self):
         other = build_demo_state()
