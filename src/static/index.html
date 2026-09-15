@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trial Risk Radar | Clinical Trial Risk Intelligence Copilot</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar"><div class="brand"><span class="brand-mark">TR</span><span>TRIAL RISK RADAR</span></div><div class="header-meta"><span class="live-dot"></span> Synthetic data · M05</div></header>
+  <main class="shell">
+    <section class="intro"><div><p class="eyebrow">CLINICAL TRIAL RISK INTELLIGENCE COPILOT</p><h1>Find tomorrow's<br><em>problem site</em> today.</h1><p class="lede">A transparent operational radar for spotting emerging site risk, proving the evidence, and testing what to do next.</p></div><div class="intro-note"><span class="note-label">DECISION WINDOW</span><strong>Where should I look?</strong><span>Prioritize by trajectory, not yesterday's raw count.</span></div></section>
+    <section class="metrics" id="metrics"></section>
+    <section class="workspace">
+      <div class="panel radar-panel"><div class="panel-head"><div><span class="kicker">01 / RISK RADAR</span><h2>Sites needing attention</h2></div><span class="small-chip">CUSUM + evidence</span></div><div id="site-list" class="site-list"></div></div>
+      <div class="panel detail-panel"><div class="panel-head"><div><span class="kicker">02 / SITE INTELLIGENCE</span><h2 id="detail-title">S037 · rising risk</h2></div><span class="status critical">CRITICAL</span></div><div class="risk-summary"><div class="score"><span>OPERATIONAL RISK</span><strong id="risk-score">87</strong><small>/ 100</small></div><div class="trajectory"><div class="trajectory-label"><span>6-period trajectory</span><strong>+13 velocity</strong></div><div class="sparkline" id="sparkline"></div><div class="trajectory-foot"><span>M01</span><span>M05 · projected 93</span></div></div></div><div class="detail-grid"><div><span class="field-label">WHY THIS RISK</span><div id="drivers" class="drivers"></div></div><div><span class="field-label">DECISION CONFIDENCE</span><div class="confidence"><strong>HIGH</strong><span>Complete history · 5 periods</span><span>87 verified deviations in store</span></div><span class="field-label evidence-label">EVIDENCE CHAIN</span><div id="evidence" class="evidence"></div></div></div></div>
+    </section>
+    <section class="lower-grid"><div class="panel bob-panel"><div class="panel-head"><div><span class="kicker">03 / BOB INVESTIGATION</span><h2>Ask the evidence</h2></div><span class="bob-badge">BOB + MCP</span></div><p class="question">Why is S037 becoming risky?</p><div id="bob-answer" class="answer"><span class="loader"></span>Retrieving risk, drivers, evidence and trend...</div><div id="bob-sources" class="sources"></div></div><div class="panel simulate-panel"><div class="panel-head"><div><span class="kicker">04 / SCENARIO LAB</span><h2>Test an intervention</h2></div><span class="small-chip">documented scenario</span></div><p class="scenario-copy">What happens if we reduce the dominant <strong>V3 scheduling</strong> deviations?</p><div class="slider-row"><input id="reduction" type="range" min="0" max="60" value="30"><output id="reduction-value">30%</output></div><button id="simulate" class="action">Run scenario <span>→</span></button><div id="simulation-result" class="simulation-result">Projected impact appears here.</div></div></section>
+    <footer><span>All data is synthetic and designed for demonstration.</span><span>FIND → PROVE → PREDICT → TEST → ACT</span></footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

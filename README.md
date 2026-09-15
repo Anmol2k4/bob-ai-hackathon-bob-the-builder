@@ -1,121 +1,73 @@
-# 🚀 [Your Project Title Here]
+# Clinical Trial Risk Intelligence Copilot
 
-> ⚠️ **Replace everything in `[ ]` brackets with your actual content before submission.**
+> **Bob the Builder · AI track**
 
----
+Clinical Trial Risk Intelligence Copilot helps clinical trial operations teams identify which site is becoming tomorrow's problem, prove why with an evidence chain, and test what to do next.
 
-## 👥 Team
+## Team
 
-| Field | Value |
-|---|---|
-| **Team Name** | [Your Team Name] |
-| **Track** | [AI / DevOps / Sustainability / Open] |
-| **Team Lead** | [Name] — [email@ibm.com] |
-| **Members** | [Name 1], [Name 2], [Name 3] |
+| Role | Name | Contact |
+|---|---|---|
+| Team lead | Parita Shah | 24aiml062@charusat.edu.in |
+| Member | Pranay Pandey | 23it071@charusat.edu.in |
+| Member | Priyanshi Dalwadi | 24dcs011@charusat.edu.in |
+| Member | Jiya Shah | 24dcs116@charusat.edu.in |
 
----
+## Problem Statement
 
-## 🎯 Problem Statement
+Clinical trial operations teams can see yesterday's deviations, but struggle to identify which site is becoming tomorrow's problem. Protocol rules, deviation records, and monitoring history are often disconnected, making it difficult to prove why risk is rising and choose an intervention with confidence.
 
-> In 2–3 sentences: What problem does your project solve? Who experiences this problem?
+## Solution
 
-[Describe the real-world problem your project addresses. Be specific about who the user is and what pain point they face.]
+The Copilot turns verified protocol rules and synthetic site data into an evidence-backed risk radar. It combines transparent trajectory analysis, linked evidence, an IBM Bob investigation boundary, and intervention simulation so an operations lead can move from finding risk to testing an action in one workflow.
 
----
+## Key Features
 
-## 💡 Solution
+- **Emerging-risk radar:** Prioritizes site deterioration using transparent trend and velocity signals.
+- **Evidence chain:** Links a site's risk drivers to verified rules, monitoring periods, patients, and deviation IDs.
+- **Bob investigation:** Provides a natural-language investigation surface backed by risk, evidence, and rule sources.
+- **Scenario lab:** Projects the effect of reducing the dominant operational driver before action is taken.
+- **Confidence signals:** Shows history completeness and evidence volume alongside recommendations.
 
-> In 2–3 sentences: What did you build? How does it solve the problem above?
+## Tech Stack
 
-[Describe your solution clearly. Explain the core mechanism — what makes it work.]
+Python standard-library HTTP server, JavaScript, HTML, CSS, IBM Bob integration boundary, MCP-ready tool contract, and deterministic synthetic clinical-trial data. The architecture is designed to add SQLite persistence and live IBM services without changing the product workflow.
 
----
-
-## ✨ Key Features
-
-- **Feature 1:** [Brief description — e.g., "Real-time anomaly detection using watsonx.ai"]
-- **Feature 2:** [Brief description]
-- **Feature 3:** [Brief description]
-- **Feature 4:** [Optional]
-- **Feature 5:** [Optional]
-
----
-
-## 🛠️ Tech Stack
-
-| Category | Technologies |
-|---|---|
-| **Languages** | [e.g., Python, TypeScript] |
-| **Frameworks** | [e.g., FastAPI, React] |
-| **IBM Technologies** | [e.g., watsonx.ai, IBM Bob, IBM Cloud] |
-| **Databases** | [e.g., PostgreSQL, Redis] |
-| **Other** | [e.g., Docker, GitHub Actions] |
-
----
-
-## 📁 Repository Structure
-
-```
-├── src/                  # All source code
-├── docs/                 # Written documentation
-│   ├── problem-statement.md
-│   ├── solution-overview.md
-│   ├── architecture.md
-│   └── setup-guide.md
-├── demo/                 # Demo artifacts
-│   ├── screenshots/      # App screenshots
-│   └── demo-video-link.txt  # Link to demo video
-├── presentation/         # Slide deck
-└── submission.yaml       # Structured submission metadata
-```
-
----
-
-## ⚡ How to Run
-
-> **Copy these exact steps from your [`docs/setup-guide.md`](docs/setup-guide.md)**
+## Run Locally
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/[your-repo].git
-cd [your-repo]
-
-# 2. Install dependencies
-[your install command here]
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env with your values
-
-# 4. Run the project
-[your run command here]
+git clone https://github.com/Anmol2k4/bob-ai-hackathon-bob-the-builder.git
+cd bob-ai-hackathon-bob-the-builder
+python src/app.py
 ```
 
----
+Open `http://127.0.0.1:8000`. No external API key is needed for the seeded local demo. See [docs/setup-guide.md](docs/setup-guide.md) for the full setup and demo flow.
 
-## 🖥️ Demo
+## Repository Structure
 
-| Artifact | Link |
+```text
+src/                  Runnable local prototype and static dashboard
+docs/                 Problem, solution, architecture, and setup documentation
+demo/                 Demo links and screenshot requirements
+presentation/         Slide-deck location and recommended story
+submission.yaml       Structured evaluator metadata
+```
+
+## Demo
+
+| Artifact | Status |
 |---|---|
-| 📹 Demo Video | [See demo/demo-video-link.txt](demo/demo-video-link.txt) |
-| 🌐 Live Demo | [See demo/live-demo-url.txt](demo/live-demo-url.txt) |
-| 🖼️ Screenshots | [See demo/screenshots/](demo/screenshots/) |
-| 📊 Presentation | [See presentation/slides.pdf](presentation/) |
+| Demo video | [demo/demo-video-link.txt](demo/demo-video-link.txt) · Not ready |
+| Live demo | [demo/live-demo-url.txt](demo/live-demo-url.txt) · Not deployed |
+| Screenshots | [demo/screenshots/](demo/screenshots/) · Capture after running locally |
+| Presentation | [presentation/](presentation/) · Deck not ready |
 
----
+## Known Limitations
 
-## ⚠️ Known Limitations
+- The current slice uses seeded synthetic data; no real patient or trial data is included.
+- IBM Bob is represented by a local adapter response until endpoint credentials and deployment details are available.
+- Live protocol PDF extraction, persistent SQLite storage, CAPA persistence, and authentication are planned next.
 
-> Be honest — judges appreciate transparency over overclaiming.
+## What We're Most Proud Of
 
-- [Limitation 1: e.g., "Authentication is mocked — not production-ready"]
-- [Limitation 2: e.g., "Only tested on Chrome"]
-- [Limitation 3: e.g., "Feature X is scaffolded but not fully implemented"]
-
----
-
-## 🏅 What We're Most Proud Of
-
-[Tell the judges what part of your submission is strongest and worth paying close attention to.]
-
----
+The strongest part of the submission is the decision loop: S037 is surfaced because its risk is accelerating, its dominant driver is proven through linked evidence, Bob explains the finding, and the scenario lab shows how a targeted intervention changes projected risk.

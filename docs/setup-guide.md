@@ -1,79 +1,46 @@
 # Setup Guide
 
-> **This file is read by the automated evaluation pipeline. Be precise and complete.**
-
 ## Prerequisites
 
-Before you begin, ensure you have the following installed:
-
-- [ ] [e.g., Python 3.11+]
-- [ ] [e.g., Node.js 18+]
-- [ ] [e.g., Docker Desktop]
-- [ ] [e.g., An IBM Cloud account with watsonx.ai access]
-
-## Environment Variables
-
-Copy `.env.example` to `.env` and fill in the values:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Description | Required |
-|---|---|---|
-| `WATSONX_API_KEY` | Your IBM watsonx.ai API key | Yes |
-| `WATSONX_PROJECT_ID` | Your watsonx.ai project ID | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `SLACK_WEBHOOK_URL` | Slack webhook for alerts | No |
+- Python 3.10 or newer
+- A modern browser
+- No external database or API key for the local seeded demo
 
 ## Installation
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/[your-org]/[your-repo].git
-cd [your-repo]
-
-# 2. Install backend dependencies
-[your command — e.g.: pip install -r requirements.txt]
-
-# 3. Install frontend dependencies (if applicable)
-[your command — e.g.: cd frontend && npm install]
-
-# 4. Set up the database (if applicable)
-[your command — e.g.: python manage.py migrate]
+git clone https://github.com/Anmol2k4/bob-ai-hackathon-bob-the-builder.git
+cd bob-ai-hackathon-bob-the-builder
 ```
+
+The prototype uses only the Python standard library, so there is no dependency install step. Optional IBM Bob configuration can be copied from `src/.env.example`; it is not required for the local demo.
 
 ## Running the Application
 
 ```bash
-# Start the backend
-[your command — e.g.: uvicorn app.main:app --reload]
-
-# Start the frontend (in a separate terminal, if applicable)
-[your command — e.g.: cd frontend && npm run dev]
+python src/app.py
 ```
 
-The application will be available at: `http://localhost:[PORT]`
+Open `http://127.0.0.1:8000`.
 
-## Running Tests
+## Quick Demo
+
+1. Start on Trial Risk Radar and point out S037 as the fastest-deteriorating site.
+2. Read the Site Intelligence panel: risk 87, +13 velocity, and 72% concentration in V3 scheduling.
+3. Show the evidence IDs and the confidence signal for five complete monitoring periods.
+4. Read Bob's answer to “Why is S037 becoming risky?” and identify its three sources.
+5. In Scenario Lab, leave the reduction at 30% and choose **Run scenario**. The projected risk is 77 and the status changes to watch.
+
+## Validation
 
 ```bash
-[your test command — e.g.: pytest tests/ -v]
-```
-
-## Quick Demo (Optional)
-
-If you have a demo script or sample data to showcase the project quickly:
-
-```bash
-[e.g.: python demo/seed_demo_data.py]
-[e.g.: open http://localhost:8000/demo]
+python -m py_compile src/app.py
 ```
 
 ## Troubleshooting
 
 | Issue | Solution |
 |---|---|
-| [e.g., `ModuleNotFoundError`] | [e.g., Run `pip install -r requirements.txt` again] |
-| [e.g., Database connection refused] | [e.g., Ensure PostgreSQL is running: `docker compose up db`] |
-| [e.g., watsonx.ai 401 error] | [e.g., Check `WATSONX_API_KEY` in your `.env` file] |
+| Port 8000 is already in use | Stop the other process or change the port tuple in `src/app.py`. |
+| Browser shows an unavailable service message | Confirm `python src/app.py` is still running and reload the page. |
+| IBM Bob credentials are unavailable | The local seeded investigation works without credentials. |

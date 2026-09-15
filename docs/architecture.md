@@ -2,48 +2,46 @@
 
 ## System Architecture
 
-[Describe the overall architecture of your system. Replace the Mermaid diagram below with your actual architecture.]
-
 ```mermaid
-graph TD
-    A[User / Browser] -->|HTTP| B[Frontend - React]
-    B -->|REST API| C[Backend - FastAPI]
-    C -->|SDK| D[watsonx.ai]
-    C -->|Query| E[PostgreSQL]
-    C -->|Publish| F[Slack Webhook]
-    D -->|Inference Result| C
+flowchart TB
+  Bob[IBM Bob natural-language agent] --> MCP[MCP investigation tools]
+  MCP --> API[Python application API]
+  Browser[Browser dashboard] --> API
+  API --> Risk[Risk engine and scenario simulator]
+  API --> Rules[Verified rules and evidence store]
+  API --> Static[Static UI assets]
+  Rules --> Synthetic[Synthetic protocol and monitoring data]
 ```
+
+The current prototype uses Python's standard library to keep the hackathon demo easy to run. The API owns the seeded source of truth, while the browser renders the radar, site intelligence, Bob investigation, and scenario result.
 
 ## Components
 
 | Component | Technology | Responsibility |
 |---|---|---|
-| Frontend | [e.g., React 18] | [e.g., Dashboard UI, user interaction] |
-| Backend API | [e.g., FastAPI] | [e.g., Business logic, orchestration] |
-| AI / ML | [e.g., watsonx.ai] | [e.g., Anomaly scoring, classification] |
-| Database | [e.g., PostgreSQL] | [e.g., Storing pipeline events and scores] |
-| Notifications | [e.g., Slack API] | [e.g., Alerting on threshold breaches] |
+| Dashboard | HTML, CSS, JavaScript | Risk radar, evidence chain, confidence, and scenario controls |
+| Backend API | Python `http.server` | Serves assets and returns structured intelligence responses |
+| Risk engine | Deterministic Python logic | Site ranking, trajectory values, and intervention projection |
+| Evidence store | Seeded in-memory structures | Rules, deviations, monitoring periods, and evidence IDs |
+| Bob boundary | JSON endpoint, MCP-ready | Returns an investigation answer with source labels |
+| Future persistence | SQLite | Planned durable evidence and CAPA records |
 
 ## Data Flow
 
-[Describe how data moves through your system from input to output.]
-
-1. [e.g., Pipeline logs are ingested via a webhook from GitHub Actions]
-2. [e.g., Logs are preprocessed and chunked into 512-token segments]
-3. [e.g., Each chunk is sent to the watsonx.ai inference endpoint]
-4. [e.g., Anomaly scores are stored in PostgreSQL]
-5. [e.g., The React dashboard polls the API every 30 seconds to refresh]
+1. The API loads synthetic sites, rules, and evidence records from deterministic seed structures.
+2. `/api/overview` returns site ranking and summary metrics for the Trial Risk Radar.
+3. `/api/sites/S037/intelligence` returns the risk index, trajectory, drivers, confidence, and evidence chain.
+4. `/api/bob/investigate` represents the Bob/MCP investigation request and returns source-labeled reasoning.
+5. `/api/sites/S037/simulate` accepts a driver reduction percentage and returns projected risk and status.
+6. The browser updates the dashboard without embedding clinical data or secrets.
 
 ## Security Considerations
 
-[Note any security decisions relevant to the architecture — even if basic.]
-
-- [e.g., API keys stored in environment variables, never committed to git]
-- [e.g., All API routes require a Bearer token]
-- [e.g., Database credentials rotated via IBM Secrets Manager]
+- All current data is synthetic and contains no patient-identifying information.
+- The local demo requires no credentials.
+- Optional IBM Bob variables belong in a local `.env` file and are represented only by `src/.env.example`.
+- Production deployment must add authentication, encrypted secret storage, audit logging, and least-privilege tool permissions.
 
 ## Scalability Notes
 
-[Optional: how would this scale beyond the hackathon prototype?]
-
-[e.g., "The FastAPI backend is stateless and could be horizontally scaled behind a load balancer. The watsonx.ai calls are the bottleneck and would benefit from request batching."]
+The API and UI are separated by JSON contracts, so the in-memory seed can be replaced by SQLite without changing the screen workflow. A production version would add a proper FastAPI service, background protocol extraction, indexed evidence queries, authenticated MCP tools, and immutable decision audit records.

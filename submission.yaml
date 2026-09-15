@@ -1,69 +1,45 @@
-# =============================================================================
-# HACKATHON SUBMISSION METADATA
-# =============================================================================
-# Instructions:
-#   - Fill in ALL required fields (marked with # REQUIRED)
-#   - Optional fields can be left as empty strings ""
-#   - Do NOT rename this file — the evaluation pipeline reads it by name
-#   - Use double quotes around all string values
-# =============================================================================
-
 team:
-  name: ""                             # REQUIRED — e.g., "Orion Squad"
-  track: ""                            # REQUIRED — one of: AI | DevOps | Sustainability | Open
+  name: "Bob the Builder"
+  track: "AI"
   lead:
-    name: ""                           # REQUIRED — e.g., "Alice Chen"
-    email: ""                          # REQUIRED — e.g., "alice.chen@ibm.com"
+    name: "Parita Shah"
+    email: "24aiml062@charusat.edu.in"
   members:
-    - name: ""                         # REQUIRED — Team member 1
-      email: ""
-    - name: ""                         # Add more members by copying the two lines above
-      email: ""
-    - name: ""
-      email: ""
+    - name: "Pranay Pandey"
+      email: "23it071@charusat.edu.in"
+    - name: "Priyanshi Dalwadi"
+      email: "24dcs011@charusat.edu.in"
+    - name: "Jiya Shah"
+      email: "24dcs116@charusat.edu.in"
 
 submission:
-  title: ""                            # REQUIRED — Project display name, e.g., "SmartOps Dashboard"
-
-  problem_statement: >                 # REQUIRED — 1-3 sentences. What problem? Who has it?
-    Replace this text with a concise description of the real-world problem
-    your project addresses and who experiences it.
-
-  solution_summary: >                  # REQUIRED — 1-3 sentences. What did you build?
-    Replace this text with a clear description of your solution
-    and how it addresses the problem above.
-
-  key_features:                        # REQUIRED — List 3 to 5 specific features you implemented
-    - ""                               # e.g., "Real-time pipeline anomaly detection using watsonx.ai"
-    - ""
-    - ""
-    - ""                               # optional 4th
-    - ""                               # optional 5th
-
+  title: "Clinical Trial Risk Intelligence Copilot"
+  problem_statement: >
+    Clinical trial operations teams can see yesterday's deviations, but struggle to identify which site is becoming tomorrow's problem. Fragmented protocol rules, deviation records and monitoring history make it difficult to prove why risk is rising or choose an intervention with confidence.
+  solution_summary: >
+    Clinical Trial Risk Intelligence Copilot turns verified protocol rules and synthetic site data into an evidence-backed risk radar. It combines transparent risk trends, an evidence chain, IBM Bob investigation, intervention simulation and CAPA-ready decisions in one workflow.
+  key_features:
+    - "CUSUM-style emerging-risk radar that prioritizes deteriorating sites"
+    - "Deterministic protocol compliance with rule-linked evidence records"
+    - "IBM Bob and MCP investigation boundary for evidence-backed answers"
+    - "Scenario simulator that projects the impact of reducing a dominant driver"
+    - "Confidence-aware intelligence using data quality and monitoring history"
   tech_stack:
-    languages: []                      # REQUIRED — e.g., ["Python", "TypeScript"]
-    frameworks: []                     # e.g., ["FastAPI", "React"]
-    ibm_technologies: []               # e.g., ["watsonx.ai", "IBM Bob", "IBM Cloud Functions"]
-    databases: []                      # e.g., ["PostgreSQL", "Redis"]
-    other: []                          # e.g., ["Docker", "GitHub Actions", "Slack API"]
+    languages: ["Python", "JavaScript", "HTML", "CSS"]
+    frameworks: ["Python standard-library HTTP server"]
+    ibm_technologies: ["IBM Bob", "MCP integration boundary"]
+    databases: ["Planned SQLite evidence store"]
+    other: ["Synthetic clinical-trial data", "GitHub Actions"]
+  what_we_are_most_proud_of: >
+    The demo follows one complete decision loop: find the fastest-deteriorating site, prove the driver through linked evidence, ask Bob why it is risky, and test a documented intervention before creating an action.
+  known_limitations: >
+    This first runnable slice uses deterministic seeded synthetic data and a local Bob response adapter. Live PDF protocol extraction, persistent SQLite storage, authenticated IBM Bob calls, CAPA persistence and production deployment remain planned follow-up work.
 
-  what_we_are_most_proud_of: >         # Optional but recommended — guides judges to your best work
-    Replace with what aspect of the submission you consider strongest
-    and want judges to pay special attention to.
-
-  known_limitations: >                 # Optional but recommended — be honest about gaps
-    Replace with any known limitations, incomplete features,
-    or shortcuts taken due to time constraints.
-
-# =============================================================================
-# ARTIFACT LOCATIONS
-# These paths are relative to the repo root. Only change if you moved files.
-# =============================================================================
 artifacts:
   source_code: "src/"
   setup_guide: "docs/setup-guide.md"
   architecture_doc: "docs/architecture.md"
-  demo_video: "demo/demo-video-link.txt"   # URL to hosted video (YouTube, Loom, Box)
-  live_demo: "demo/live-demo-url.txt"      # URL to deployed demo (optional)
+  demo_video: "demo/demo-video-link.txt"
+  live_demo: "demo/live-demo-url.txt"
   screenshots: "demo/screenshots/"
   presentation: "presentation/"

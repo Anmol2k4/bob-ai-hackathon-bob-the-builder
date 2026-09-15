@@ -1,47 +1,29 @@
 # Source Code
 
-Place all your project's source code in this folder.
+The current runnable prototype is a dependency-free Python service and static dashboard.
 
-## Structure Guidelines
+## Structure
 
-Organize your code logically. Here are common patterns — use whatever fits
-your project:
-
-### Web Application
-```
+```text
 src/
-  backend/        ← API server code
-  frontend/       ← UI code
-  shared/         ← Shared utilities/types
+  app.py              HTTP API and deterministic seeded intelligence
+  .env.example        Optional IBM Bob integration variables
+  static/
+    index.html        Dashboard structure
+    styles.css        Product styling and responsive layout
+    app.js            API-backed dashboard interactions
 ```
 
-### Data / AI Project
-```
-src/
-  data/           ← Data ingestion / preprocessing
-  models/         ← ML model code
-  api/            ← Serving layer
-  notebooks/      ← Jupyter notebooks (exploration)
-```
+## Start
 
-### CLI / Script-based Tool
-```
-src/
-  cli/            ← CLI entry points
-  lib/            ← Core logic
-  utils/          ← Helpers
-```
+From the repository root, run `python src/app.py` and open `http://127.0.0.1:8000`.
 
-## Important Files to Include
+## Future integrations
 
-- `requirements.txt` or `package.json` — dependency manifest
-- `.env.example` — template for environment variables (NEVER commit `.env`)
-- Any database migration files
-- Configuration files
+The API is organized around JSON contracts so the seeded structures can be replaced with SQLite, live protocol extraction, and authenticated IBM Bob/MCP calls in the next implementation pass.
 
 ## What NOT to Include in src/
 
 - `.env` files with real secrets
-- Large binary files (use Git LFS or link externally)
-- `node_modules/` or `venv/` (these are in `.gitignore`)
-- Build artifacts (`dist/`, `build/`, `__pycache__/`)
+- `node_modules/` or virtual environments
+- Build artifacts or generated caches

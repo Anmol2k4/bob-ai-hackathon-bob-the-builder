@@ -2,20 +2,20 @@
 
 ## Background
 
-[Describe the broader context. What domain or industry does this problem belong to? What situation creates the problem?]
+Clinical trial operations teams monitor sites across repeated visits, protocol rules, patients, labs, and administrative records. A site's operational risk is not only the number of deviations recorded; it also depends on whether deviations are accelerating, concentrated around one protocol rule, and supported by enough monitoring history to justify action.
 
 ## The Problem
 
-[State the problem clearly and specifically. Avoid vague statements like "things are slow" — instead say "Operations teams spend an average of 45 minutes per incident diagnosing pipeline failures because logs are scattered across 6 different tools."]
+Teams can report yesterday's deviations but cannot quickly determine which site is becoming tomorrow's problem. Risk signals are distributed across protocol documents and operational records, so investigators spend time assembling context instead of deciding which site to investigate and what intervention to test.
 
-## Who is Affected
+## Who Is Affected
 
-[Describe the specific user or persona experiencing this problem. Be concrete — not "developers" but "backend engineers managing CI/CD pipelines in enterprises with 50+ microservices."]
+Clinical operations leads, site managers, monitors, and quality teams responsible for prioritizing oversight across multiple trial sites are affected. They need an auditable explanation for a decision, not a black-box score or a raw deviation count.
 
 ## Why It Matters
 
-[What is the cost of this problem? Lost time? Revenue? Safety risk? Frustration? Quantify if possible.]
+Late recognition of an emerging site problem can consume monitoring capacity, delay corrective action, and increase the chance that recurring process failures continue into later monitoring periods. A transparent early-warning workflow lets a small team focus scarce attention where the trajectory and evidence justify it.
 
 ## Why Existing Solutions Fall Short
 
-[Briefly explain what people currently do and why it doesn't fully solve the problem. This sets up why your solution is needed.]
+Basic dashboards rank sites by current deviation counts, which can over-prioritize large sites and miss low-volume sites whose risk is accelerating. Generic AI summaries may explain a pattern without showing the exact rule and evidence behind it. This project joins deterministic checks, trend signals, traceable evidence, and scenario testing in one decision path.

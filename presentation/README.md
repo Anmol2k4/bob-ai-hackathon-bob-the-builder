@@ -1,5 +1,20 @@
 # Presentation
 
+## Clinical Trial Risk Intelligence Copilot
+
+The final deck should center on the working decision loop: FIND the fastest-deteriorating site, PROVE the driver through evidence, PREDICT the trajectory, TEST a 30% intervention, and ACT through CAPA and closed-loop verification.
+
+Suggested project-specific slides:
+
+1. Title: project name, Bob the Builder, AI track, and team.
+2. Problem: why raw deviation counts miss emerging site risk.
+3. Solution: Trial Risk Radar and evidence chain.
+4. Architecture: dashboard, Python API, risk engine, evidence store, and Bob/MCP boundary.
+5. Demo: S037 at risk 87 with 72% V3 scheduling concentration.
+6. IBM technologies: IBM Bob and MCP investigation tools.
+7. Scenario: 30% driver reduction projects risk 87 to 77.
+8. Team, limitations, and next steps.
+
 Place your slide deck in this folder.
 
 ## Accepted Formats
