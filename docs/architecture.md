@@ -6,56 +6,45 @@ TrialGuard AI is a single-server Python web application with a vanilla JavaScrip
 
 ## System Architecture
 
-```
-Browser (SPA)
-     |
-     | HTTP/JSON  (Bearer token auth)
-     v
-Python HTTP Server  (server.py)
-     |
-     +-----------------------------+
-     |                             |
-     v                             v
-Application Services            MongoDB / Memory Repository
-     |                           (database.py)
-     +-- Deviation Engine
-     |   (engines.py)
-     +-- Severity Engine
-     |   (engines.py)
-     +-- Site Risk Engine
-     |   (engines.py)
-     +-- CAPA Service
-     |   (services.py)
-     +-- Bob Agent Boundary
-     |   (bob_boundary.py)
-     +-- Audit Service
-     |   (server.py)
-     +-- Synthetic Data Service
-         (synthetic_data.py)
+```mermaid
+graph TD
+    A[Browser SPA<br/>index.html · app.js · styles.css] -->|HTTP/JSON Bearer token| B[Python HTTP Server<br/>server.py]
+    B --> C[Application Services]
+    B --> D[(MongoDB<br/>PyMongo)]
+    B --> E[(In-Memory Repository<br/>fallback)]
+    D & E --> F[database.py<br/>MemoryRepository / MongoRepository]
+    C --> G[Deviation Engine<br/>engines.py]
+    C --> H[Severity Engine<br/>engines.py]
+    C --> I[Site Risk Engine<br/>engines.py]
+    C --> J[CAPA Service<br/>services.py]
+    C --> K[Bob Boundary<br/>bob_boundary.py]
+    C --> L[Audit Service<br/>server.py]
+    C --> M[Synthetic Data<br/>synthetic_data.py]
+    K -->|13 MCP-ready tools| N[LocalDemoBobProvider<br/>DEMO ADAPTER]
+    N -.->|replace with| O[IBM Bob MCP Endpoint<br/>live endpoint — future]
 ```
 
 ## IBM Bob Integration Boundary
 
-```
-User (browser)
-     ↓
-POST /api/bob/ask  {question}
-     ↓
-server.py  →  BobProvider.answer(question, user, tools)
-     ↓
-LocalDemoBobProvider  [DEMO ADAPTER — NOT IBM BOB]
-     ↓
-build_bob_tools(repo, session)  →  tool callable
-     ↓
-Tool function  (e.g. explain_site_risk, generate_capa)
-     ↓
-Repository  →  MongoDB / Memory
-     ↓
-Structured result dict
-     ↓
-_compose_answer()  →  natural-language explanation
-     ↓
-JSON response  {answer, sources, provider, tool_used}
+```mermaid
+sequenceDiagram
+    participant U as User (Browser)
+    participant S as server.py
+    participant B as BobProvider
+    participant T as Tool Functions
+    participant R as Repository
+
+    U->>S: POST /api/bob/ask {question, token}
+    S->>S: _get_session(token) — auth check
+    S->>B: BobProvider.answer(question, user, tools)
+    B->>B: Route to relevant tool
+    B->>T: e.g. explain_site_risk(site_id)
+    T->>R: Query MongoDB / Memory
+    R-->>T: Raw data
+    T-->>B: Structured result dict
+    B->>B: _compose_answer() — natural language
+    B-->>S: {answer, sources, provider, tool_used}
+    S-->>U: JSON response
 ```
 
 To connect IBM Bob:

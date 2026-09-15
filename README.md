@@ -147,6 +147,43 @@ python src/server.py
 
 ---
 
+## Demo
+
+| Artifact | Link |
+|---|---|
+| **Demo Video** | [Google Drive — Demo Recording](https://drive.google.com/drive/folders/1NC5sAVuRSfafQ3ymN-QQP0weuazMG0n2?usp=sharing) |
+| **Live Demo** | Run locally — see [Quick Start](#quick-start) or [docs/setup-guide.md](docs/setup-guide.md) |
+| **Screenshots** | [`demo/screenshots/`](demo/screenshots/) — 5 screenshots of the running app |
+
+---
+
+## Known Limitations
+
+- **No live IBM Bob connectivity** — uses a local Demo Bob Adapter. Replacing it requires implementing one provider class (see [`docs/setup-guide.md`](docs/setup-guide.md)).
+- **No persistent storage without MongoDB** — in-memory fallback means data resets on server restart.
+- **Single trial protocol** — only TG-101 is modelled; multi-trial support is future work.
+- **No real-time data ingestion** — all data is deterministic synthetic seed data (seed = 37037).
+- **HTML reports only** — print-friendly HTML; PDF/DOCX export is not implemented.
+- **Prototype severity and risk models** — not ICH/FDA/EMA guidance; not validated for regulatory use.
+- **No production hardening** — no TLS, no durable session store, no rate limiting.
+
+---
+
+## What We're Most Proud Of
+
+The end-to-end decision loop, completable in under 5 minutes:
+
+1. Log in as Study Manager → see **S037 at 87/100 WORSENING** on the dashboard
+2. Open a deviation: **100 mg expected → 150 mg actual**, severity score **14/25 MAJOR**
+3. Ask IBM Bob *"Why is Site S037 high risk?"* → answer grounded in the database, not hallucinated
+4. Ask *"What should we do?"* → specific corrective and preventive actions
+5. *"Generate a CAPA for Site S037"* → CAPA-0001 with problem statement, root cause, and actions
+6. Navigate to Audit Trail → every action logged
+
+Every step is evidence-backed, role-scoped, and traceable to a specific protocol rule comparison — not ML inference.
+
+---
+
 ## Repository Structure
 
 ```
