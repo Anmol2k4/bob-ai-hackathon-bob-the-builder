@@ -1,5 +1,15 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+# Auto-load .env if present (never required — env vars take precedence)
+try:
+    from dotenv import load_dotenv
+    _env = Path(__file__).parent / ".env"
+    if _env.exists():
+        load_dotenv(_env)
+except ImportError:
+    pass  # python-dotenv not installed — rely on environment variables directly
 
 
 @dataclass(frozen=True)
