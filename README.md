@@ -50,6 +50,9 @@ IBM Bob investigation (MCP-ready tool boundary)
 Recommended actions
      ↓
 CAPA generation
+     ↓
+   Audit
+
 ```
 
 ---
