@@ -134,13 +134,16 @@ class Handler(BaseHTTPRequestHandler):
             return {}
 
     def _send(self, code: int, body: bytes, content_type: str = "application/json") -> None:
-        self.send_response(code)
-        self.send_header("Content-Type", content_type)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(code)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            pass  # client disconnected before we finished — not a server error
 
     def _send_json(self, code: int, obj: Any) -> None:
         self._send(code, _json(obj))
@@ -302,10 +305,15 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send_error(404, f"Endpoint not found: {method} {path}")
 
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            pass  # client closed the connection mid-flight — ignore silently
         except Exception:
             tb = traceback.format_exc()
             print(f"[ERROR] {method} {path}\n{tb}")
-            self._send_error(500, "Internal server error")
+            try:
+                self._send_error(500, "Internal server error")
+            except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                pass  # connection already gone, can't send error response
 
     # ── static file serving ───────────────────────────────────────────────────
 
