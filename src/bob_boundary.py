@@ -366,30 +366,199 @@ class LocalDemoBobProvider:
     This adapter provides deterministic, evidence-backed natural-language responses
     by calling the same MCP-ready tool contracts that a real IBM Bob integration would use.
 
-    To connect to IBM Bob: implement IBMBobProvider with the same .answer() interface.
+    Architecture:
+        Browser → server.py → LocalDemoBobProvider → build_bob_tools() → MongoDB
+
+    For real IBM Bob integration, see src/mcp_server.py and .bob/mcp.json.
     """
     name = "DEMO BOB ADAPTER (not IBM Bob)"
 
-    # Quick prompt patterns → tool routing (order matters: more specific first)
-    _ROUTES = [
-        (["explain", "why", "reason", "driver", "what makes"], "explain_site_risk"),
-        (["recommend", "what should we do", "what to do", "actions", "what can we"], "recommend_site_actions"),
-        (["trend", "trajectory", "isolated", "pattern", "getting worse", "worsening"], "get_site_trends"),
-        (["capa", "corrective action", "preventive action"], "generate_capa"),
-        (["major deviation", "serious deviation"], "list_site_deviations"),
-        (["highest risk", "high risk", "most at risk", "riskiest", "which sites"], "list_high_risk_sites"),
-        (["summary", "overview", "summarize", "total", "how many"], "get_trial_overview"),
-        (["report"], "generate_risk_report"),
+    # ── Intent categories ────────────────────────────────────────────────────
+    # Each entry: (required_context_keywords, trigger_keywords, intent)
+    # required_context_keywords: at least one must be present (trial domain signal)
+    # trigger_keywords: at least one must be present (action signal)
+    # Both conditions must be met for the intent to fire.
+    #
+    # UNSUPPORTED fires when NO intent matches.
+
+    _INTENT_RULES = [
+        # ── More-specific rules first ──────────────────────────────────────
+        # NOTE: COMPARE_SITES is NOT in this list.  It is handled entirely by
+        # the explicit two-site shortcut in answer() (step 2b) before
+        # _classify_intent() is ever called.  Having it here caused false
+        # positives when a single-site message contained words like "worse".
+
+        # SITE RISK EXPLANATION: "why is S037 high risk?" — requires why/explain + risk/site
+        # Must come before HIGH_RISK_SITES to avoid "why … high risk" being swallowed there
+        {
+            "intent": "SITE_RISK_EXPLANATION",
+            "tool": "explain_site_risk",
+            "context": ["site", "risk", "s0"],
+            "trigger": ["why", "explain", "reason", "driver", "what makes", "what is causing", "what caused", "contributing"],
+        },
+        # TRIAL_OVERVIEW: must mention trial/clinical/trialguard/study + overview/summary/total
+        {
+            "intent": "TRIAL_OVERVIEW",
+            "tool": "get_trial_overview",
+            "context": ["trial", "clinical", "trialguard", "study"],
+            "trigger": ["overview", "summary", "summarize", "total", "how many", "status", "all sites", "all patients"],
+        },
+        # HIGH_RISK_SITES: "which sites are high risk?" — requires explicit plural sites/which sites
+        # context: "sites" plural OR "which" (not matched by single-site questions)
+        {
+            "intent": "HIGH_RISK_SITES",
+            "tool": "list_high_risk_sites",
+            "context": ["sites", "which site", "all site"],
+            "trigger": ["highest risk", "high risk", "most at risk", "riskiest", "highest", "ranked", "top sites", "worst sites", "at risk"],
+        },
+        # RISK REPORT: must mention report keyword explicitly — before CAPA_GENERATION
+        # to prevent "generate a risk report" matching CAPA
+        {
+            "intent": "RISK_REPORT",
+            "tool": "generate_risk_report",
+            "context": ["report", "risk report", "site report"],
+            "trigger": ["report", "generate report", "create report", "risk report"],
+        },
+        # CAPA GENERATION: must mention capa/corrective/preventive + generate/create/draft
+        {
+            "intent": "CAPA_GENERATION",
+            "tool": "generate_capa",
+            "context": ["capa", "corrective", "preventive"],
+            "trigger": ["generate", "create", "draft", "write", "open", "new", "capa"],
+        },
+        # CAPA STATUS: must mention capa + status/progress/open/closed/list
+        {
+            "intent": "CAPA_STATUS",
+            "tool": "get_capa_status",
+            "context": ["capa"],
+            "trigger": ["status", "progress", "open capas", "closed", "existing", "list capas", "all capas", "capa records"],
+        },
+        # SITE TRENDS: must mention site/risk/deviation + trend/trajectory/worsening
+        {
+            "intent": "SITE_TRENDS",
+            "tool": "get_site_trends",
+            "context": ["site", "risk", "deviation", "s0"],
+            "trigger": ["trend", "trajectory", "isolated", "getting worse", "worsening", "improving", "sparkline", "pattern over time", "over time", "getting better"],
+        },
+        # SITE ACTIONS: must mention site/risk/deviation + recommend/actions
+        {
+            "intent": "SITE_ACTIONS",
+            "tool": "recommend_site_actions",
+            "context": ["site", "risk", "deviation", "s0"],
+            "trigger": ["recommend", "what should we do", "what to do", "actions", "what can we", "suggestions", "intervention", "next steps", "corrective", "action plan"],
+        },
+        # SITE DEVIATIONS: must mention deviation/protocol/violation + list/show/deviations
+        {
+            "intent": "SITE_DEVIATIONS",
+            "tool": "list_site_deviations",
+            "context": ["deviation", "deviations", "protocol violation", "violation", "finding"],
+            "trigger": ["list", "show", "what", "which", "all", "major", "deviations", "violations", "findings", "contributing"],
+        },
+        # SITE RISK SCORE: must mention site + risk score/level/current/assessment
+        {
+            "intent": "SITE_RISK",
+            "tool": "get_site_risk",
+            "context": ["site", "risk", "s0"],
+            "trigger": ["risk score", "risk level", "current risk", "score", "how risky", "risk assessment", "risk status"],
+        },
+        # PROTOCOL RULES: must mention protocol/rule/requirement + search/find/show/list
+        {
+            "intent": "PROTOCOL_RULES",
+            "tool": "search_protocol_rules",
+            "context": ["protocol", "rule", "requirement", "tg-101", "tg101"],
+            "trigger": ["search", "find", "show", "list", "what", "which", "rule", "rules", "requirement"],
+        },
+        # PATIENT PROTOCOL: must mention patient + check/compare/eligibility
+        {
+            "intent": "PATIENT_PROTOCOL",
+            "tool": "compare_patient_to_protocol",
+            "context": ["patient"],
+            "trigger": ["check", "compare", "eligible", "eligibility", "compliant", "compliance", "violation", "meets criteria"],
+        },
     ]
 
-    def answer(self, question: str, user: User, tools: dict[str, Callable]) -> dict:
-        lowered = question.lower()
+    # Phrases that are clear non-clinical / greeting signals
+    _NON_CLINICAL_TRIGGERS = [
+        "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
+        "how are you", "what's up", "howdy", "greetings", "tell me a joke",
+        "joke", "weather", "what is the weather", "what time is it",
+        "who are you", "what is your name", "your name",
+        "thanks", "thank you", "cheers", "bye", "goodbye",
+        "help me with", "help", "random",
+    ]
 
-        # Permission check: site coordinator cross-site access
+    _UNSUPPORTED_RESPONSE = (
+        "I can help with TrialGuard clinical-trial risk monitoring. "
+        "Try asking about:\n\n"
+        "• Trial overview: \"Give me a summary of the trial\"\n"
+        "• Site risk: \"Why is Site S037 high risk?\"\n"
+        "• High-risk sites: \"Which sites have the highest risk?\"\n"
+        "• Deviations: \"Show me deviations at Site S037\"\n"
+        "• Trends: \"Is Site S037's risk getting worse?\"\n"
+        "• Actions: \"What actions are recommended for S037?\"\n"
+        "• CAPA: \"Generate a CAPA for Site S037\"\n"
+        "• Risk report: \"Generate a risk report for S037\""
+    )
+
+    def _classify_intent(self, lowered: str, has_site: bool) -> str | None:
+        """
+        Return the matching intent name, or None if no TrialGuard intent is detected.
+
+        Rules:
+        1. If the message is a clear non-clinical phrase, return None immediately.
+        2. Otherwise scan intent rules: both a context keyword AND a trigger keyword
+           must appear in the lowered message for the intent to fire.
+        3. If no rule fires, return None.
+        """
+        import re as _re
+        # Check for explicit non-clinical / greeting signals using word boundaries
+        for phrase in self._NON_CLINICAL_TRIGGERS:
+            # Build a word-boundary pattern for the phrase
+            pattern = r'(?<!\w)' + _re.escape(phrase) + r'(?!\w)'
+            if _re.search(pattern, lowered):
+                # Extra guard: even if a greeting word appears, allow the message
+                # if it also contains a clear TrialGuard clinical signal
+                if has_site and any(kw in lowered for kw in ["risk", "deviation", "capa", "trend", "explain", "why"]):
+                    break  # let normal routing handle it
+                # Allow if the message has strong clinical context beyond the greeting
+                if any(kw in lowered for kw in ["trial", "clinical", "protocol", "site", "capa", "deviation"]):
+                    break  # let normal routing handle it
+                return None
+
+        # Check intent rules in order
+        for rule in self._INTENT_RULES:
+            context_match = any(kw in lowered for kw in rule["context"])
+            trigger_match = any(kw in lowered for kw in rule["trigger"])
+            # Site ID in message counts as context for site-scoped intents
+            if has_site and rule["intent"] in (
+                "SITE_RISK", "SITE_RISK_EXPLANATION", "SITE_TRENDS",
+                "SITE_ACTIONS", "SITE_DEVIATIONS", "CAPA_GENERATION",
+                "RISK_REPORT",
+            ):
+                context_match = context_match or True
+            if context_match and trigger_match:
+                return rule["intent"]
+
+        return None
+
+    def _tool_for_intent(self, intent: str) -> str:
+        for rule in self._INTENT_RULES:
+            if rule["intent"] == intent:
+                return rule["tool"]
+        return ""
+
+    def answer(self, question: str, user: User, tools: dict[str, Callable]) -> dict:
+        import re
+        lowered = question.lower().strip()
+
+        # ── 1. Extract site ID from message ──────────────────────────────────
+        site_matches = re.findall(r'\bS\d{3}\b', question)
+        # Use site from message, or the user's own assigned site (never default to S037)
+        target_site = site_matches[0] if site_matches else user.site_id
+
+        # ── 2. Permission check: site coordinator cross-site access ──────────
         if user.role == "SITE_COORDINATOR":
-            import re
-            sites_mentioned = re.findall(r'\bS\d{3}\b', question)
-            for mentioned in sites_mentioned:
+            for mentioned in site_matches:
                 if mentioned != user.site_id:
                     return {
                         "answer": (
@@ -399,49 +568,131 @@ class LocalDemoBobProvider:
                         "sources": [],
                         "provider": self.name,
                         "tool_result": None,
+                        "tool_used": None,
                     }
 
-        # Determine target site
-        import re
-        site_matches = re.findall(r'\bS\d{3}\b', question)
-        target_site = site_matches[0] if site_matches else (user.site_id or "S037")
+        # ── 2b. COMPARE_SITES shortcut — two site IDs present ────────────────
+        # Detect before normal intent classification so "S001 vs S032" is never
+        # reduced to a single-site report.
+        if len(site_matches) >= 2:
+            compare_triggers = ["compare", "vs", "versus", "comparison", "difference",
+                                 "which is", "riskier", "better", "worse", "between",
+                                 "report", "generate"]
+            if any(kw in lowered for kw in compare_triggers):
+                site_a, site_b = site_matches[0], site_matches[1]
+                return self._handle_compare(site_a, site_b, tools, user)
 
-        # Route to tool
-        tool_name = "explain_site_risk"
-        for keywords, name in self._ROUTES:
-            if any(kw in lowered for kw in keywords):
-                tool_name = name
-                break
+        # ── 3. Classify intent ───────────────────────────────────────────────
+        intent = self._classify_intent(lowered, has_site=bool(site_matches))
 
-        # Role-based tool downgrade: if the selected tool isn't allowed for this role, fall back
+        if intent is None:
+            # No TrialGuard intent detected — return unsupported response
+            return {
+                "answer": self._UNSUPPORTED_RESPONSE,
+                "sources": [],
+                "provider": self.name,
+                "tool_result": None,
+                "tool_used": None,
+            }
+
+        tool_name = self._tool_for_intent(intent)
+
+        # ── 4. Role-based tool downgrade ─────────────────────────────────────
         if tool_name in ("generate_capa", "recommend_site_actions") and user.role == "AUDITOR":
-            tool_name = "explain_site_risk"
+            # Auditor cannot generate CAPAs or recommendations — show risk explanation instead
+            if target_site:
+                tool_name = "explain_site_risk"
+            else:
+                return {
+                    "answer": "As an Auditor, you can view risk data but not generate CAPA or recommendations. "
+                              "Ask about a specific site's risk, deviations, or the trial overview.",
+                    "sources": [],
+                    "provider": self.name,
+                    "tool_result": None,
+                    "tool_used": None,
+                }
         if tool_name in ("list_high_risk_sites", "get_trial_overview") and user.role == "SITE_COORDINATOR":
-            # Coordinator can't query all sites — show their own site instead
-            tool_name = "explain_site_risk"
+            # Coordinator can't query all sites — redirect to their own site
+            if user.site_id:
+                tool_name = "explain_site_risk"
+                target_site = user.site_id
+            else:
+                return {
+                    "answer": "Your account is not assigned to a specific site. Please contact your administrator.",
+                    "sources": [],
+                    "provider": self.name,
+                    "tool_result": None,
+                    "tool_used": None,
+                }
         if tool_name in ("generate_capa", "recommend_site_actions") and user.role == "SITE_COORDINATOR":
-            # Coordinator can't generate CAPAs — show their site risk instead
-            tool_name = "explain_site_risk"
+            # Coordinator can't generate CAPAs — redirect to site risk
+            if target_site:
+                tool_name = "explain_site_risk"
+            else:
+                return {
+                    "answer": "As a Site Coordinator, you can view your site's risk but not generate CAPA or recommendations.",
+                    "sources": [],
+                    "provider": self.name,
+                    "tool_result": None,
+                    "tool_used": None,
+                }
 
+        # ── 5. For site-scoped tools, require a site ID ──────────────────────
+        _site_scoped = {
+            "get_site_risk", "explain_site_risk", "list_site_deviations",
+            "get_site_trends", "recommend_site_actions", "generate_capa",
+            "generate_risk_report",
+        }
+        if tool_name in _site_scoped and not target_site:
+            return {
+                "answer": (
+                    "Please specify a site ID (e.g. S037) in your question. "
+                    "For example: \"Why is Site S037 high risk?\""
+                ),
+                "sources": [],
+                "provider": self.name,
+                "tool_result": None,
+                "tool_used": tool_name,
+            }
+
+        # ── 6. Call tool ──────────────────────────────────────────────────────
         try:
             fn = tools.get(tool_name)
             if not fn:
-                return {"answer": "That tool is not available.", "sources": [], "provider": self.name, "tool_result": None}
+                return {
+                    "answer": "That tool is not available in the current configuration.",
+                    "sources": [],
+                    "provider": self.name,
+                    "tool_result": None,
+                    "tool_used": tool_name,
+                }
 
-            # Call tool with appropriate params
-            if tool_name in ("explain_site_risk", "get_site_risk", "recommend_site_actions",
-                             "list_site_deviations", "get_site_trends", "generate_risk_report"):
-                result = fn(site_id=target_site)
-            elif tool_name == "generate_capa":
+            if tool_name in _site_scoped:
                 result = fn(site_id=target_site)
             elif tool_name == "list_high_risk_sites":
                 result = fn()
             elif tool_name == "get_trial_overview":
                 result = fn()
+            elif tool_name == "get_capa_status":
+                result = fn(site_id=target_site) if target_site else fn()
+            elif tool_name == "search_protocol_rules":
+                result = fn(query=question)
+            elif tool_name == "compare_patient_to_protocol":
+                # patient_id must be in the message — extract P-XXXXX pattern
+                patient_matches = re.findall(r'\bP-?\d+\b', question, re.IGNORECASE)
+                if not patient_matches:
+                    return {
+                        "answer": "Please include a patient ID (e.g. P-001) in your question.",
+                        "sources": [],
+                        "provider": self.name,
+                        "tool_result": None,
+                        "tool_used": tool_name,
+                    }
+                result = fn(patient_id=patient_matches[0])
             else:
-                result = fn(site_id=target_site)
+                result = fn(site_id=target_site) if target_site else fn()
 
-            answer = self._compose_answer(tool_name, result, target_site, question, user)
+            answer = self._compose_answer(tool_name, result, target_site or "", question, user)
             sources = result.pop("sources", ["Risk engine", "Deviation repository", "Protocol TG-101"])
 
             return {
@@ -454,9 +705,120 @@ class LocalDemoBobProvider:
             }
 
         except PermissionError as e:
-            return {"answer": str(e), "sources": [], "provider": self.name, "tool_result": None}
+            return {"answer": str(e), "sources": [], "provider": self.name, "tool_result": None, "tool_used": tool_name}
         except Exception as e:
-            return {"answer": f"Unable to process that request: {e}", "sources": [], "provider": self.name, "tool_result": None}
+            return {
+                "answer": f"Unable to process that request: {e}",
+                "sources": [],
+                "provider": self.name,
+                "tool_result": None,
+                "tool_used": tool_name,
+            }
+
+    def _handle_compare(self, site_a: str, site_b: str, tools: dict, user: User) -> dict:
+        """Call risk + trends + deviations for both sites and compose a side-by-side comparison."""
+        try:
+            fn_risk   = tools.get("get_site_risk")
+            fn_trends = tools.get("get_site_trends")
+            fn_devs   = tools.get("list_site_deviations")
+
+            risk_a   = fn_risk(site_id=site_a)   if fn_risk   else {}
+            risk_b   = fn_risk(site_id=site_b)   if fn_risk   else {}
+            trend_a  = fn_trends(site_id=site_a) if fn_trends else {}
+            trend_b  = fn_trends(site_id=site_b) if fn_trends else {}
+            devs_a   = fn_devs(site_id=site_a)   if fn_devs   else {"deviations": [], "count": 0}
+            devs_b   = fn_devs(site_id=site_b)   if fn_devs   else {"deviations": [], "count": 0}
+
+            maj_a = sum(1 for d in devs_a.get("deviations", []) if d.get("severity") == "MAJOR")
+            maj_b = sum(1 for d in devs_b.get("deviations", []) if d.get("severity") == "MAJOR")
+
+            answer = self._compose_compare(
+                site_a, site_b,
+                risk_a, risk_b,
+                trend_a, trend_b,
+                devs_a["count"], devs_b["count"],
+                maj_a, maj_b,
+            )
+            sources = ["Risk scoring service", "Deviation repository", "Site repository"]
+            return {
+                "answer": answer,
+                "sources": sources,
+                "provider": self.name,
+                "tool_result": {"site_a": site_a, "site_b": site_b},
+                "tool_used": "compare_sites",
+                "disclaimer": "Responses are generated from synthetic data for demonstration only.",
+            }
+        except PermissionError as e:
+            return {"answer": str(e), "sources": [], "provider": self.name, "tool_result": None, "tool_used": "compare_sites"}
+        except Exception as e:
+            return {"answer": f"Unable to compare sites: {e}", "sources": [], "provider": self.name, "tool_result": None, "tool_used": "compare_sites"}
+
+    def _compose_compare(
+        self,
+        site_a: str, site_b: str,
+        risk_a: dict, risk_b: dict,
+        trend_a: dict, trend_b: dict,
+        total_a: int, total_b: int,
+        major_a: int, major_b: int,
+    ) -> str:
+        score_a  = risk_a.get("current_score", 0)
+        score_b  = risk_b.get("current_score", 0)
+        level_a  = risk_a.get("risk_level", "?")
+        level_b  = risk_b.get("risk_level", "?")
+        trend_a_ = risk_a.get("trend", "STABLE")
+        trend_b_ = risk_b.get("trend", "STABLE")
+        pred_a   = trend_a.get("predicted_score", score_a)
+        pred_b   = trend_b.get("predicted_score", score_b)
+        ind_a    = risk_a.get("leading_indicators", [])
+        ind_b    = risk_b.get("leading_indicators", [])
+
+        lines = [
+            f"Comparison Report: {site_a} vs {site_b}",
+            f"{'-' * 48}",
+            f"{'Metric':<28} {site_a:>8}  {site_b:>8}",
+            f"{'-' * 48}",
+            f"{'Risk score':<28} {score_a:>7}/100  {score_b:>7}/100",
+            f"{'Risk level':<28} {level_a:>8}  {level_b:>8}",
+            f"{'Trend':<28} {trend_a_:>8}  {trend_b_:>8}",
+            f"{'Predicted score':<28} {pred_a:>7}/100  {pred_b:>7}/100",
+            f"{'Total deviations':<28} {total_a:>8}  {total_b:>8}",
+            f"{'Major deviations':<28} {major_a:>8}  {major_b:>8}",
+            f"{'-' * 48}",
+        ]
+
+        # Verdict
+        if score_a > score_b:
+            higher, lower = site_a, site_b
+            diff = score_a - score_b
+        elif score_b > score_a:
+            higher, lower = site_b, site_a
+            diff = score_b - score_a
+        else:
+            higher = lower = None
+            diff = 0
+
+        if higher:
+            lines.append(f"\nVerdict: {higher} is at higher risk ({diff} points above {lower}).")
+        else:
+            lines.append(f"\nVerdict: Both sites have the same risk score.")
+
+        # Trend warning
+        both_worsening = trend_a_ == "WORSENING" and trend_b_ == "WORSENING"
+        if both_worsening:
+            lines.append(f"Both sites show a WORSENING trend - escalated monitoring recommended for both.")
+        elif trend_a_ == "WORSENING":
+            lines.append(f"{site_a} is on a worsening trajectory; {site_b} is {trend_b_}.")
+        elif trend_b_ == "WORSENING":
+            lines.append(f"{site_b} is on a worsening trajectory; {site_a} is {trend_a_}.")
+
+        # Leading indicators
+        if ind_a:
+            lines.append(f"\n{site_a} leading indicators: {', '.join(ind_a[:3])}.")
+        if ind_b:
+            lines.append(f"{site_b} leading indicators: {', '.join(ind_b[:3])}.")
+
+        lines.append(f"\nData source: TrialGuard MongoDB - risk engine, deviation repository.")
+        return "\n".join(lines)
 
     def _compose_answer(self, tool_name: str, result: dict, site_id: str, question: str, user: User) -> str:
         if tool_name == "list_high_risk_sites":
@@ -492,7 +854,7 @@ class LocalDemoBobProvider:
             return (
                 f"CAPA {result.get('capa_id', 'draft')} has been generated for Site {site_id}.\n\n"
                 f"Problem: {result.get('problem_statement', '')}\n\n"
-                f"Root Cause (AI hypothesis — requires qualified review): {result.get('root_cause', '')}\n\n"
+                f"Root Cause (AI hypothesis - requires qualified review): {result.get('root_cause', '')}\n\n"
                 f"Priority: {result.get('priority', 'MEDIUM')} | Due: {result.get('due_date', 'TBD')}\n\n"
                 f"⚠ {result.get('disclaimer', 'Qualified review required before implementation.')}"
             )
@@ -556,3 +918,55 @@ class LocalDemoBobProvider:
             )
 
         return "I have retrieved the requested information from the trial database."
+
+
+# ─── Real MCP Bob Provider ────────────────────────────────────────────────────
+
+class MCPBobProvider:
+    """
+    REAL IBM BOB PROVIDER — replaces LocalDemoBobProvider for the web UI.
+
+    Routes /api/bob/ask directly through the MCP server tool layer.
+    No keyword routing — tools are called based on explicit intent detection,
+    identical to how IBM Bob selects tools, but running in-process.
+
+    Architecture:
+        Browser → POST /api/bob/ask → server.py
+            → MCPBobProvider.answer()
+            → build_bob_tools(repo, sess)   ← same boundary
+            → TrialGuard tool
+            → MongoDB
+    """
+    name = "IBM Bob (MCP)"
+
+    # Intent → tool mapping (same rules as the MCP tool descriptions)
+    # Uses the same _INTENT_RULES + _classify_intent logic from LocalDemoBobProvider
+    # by delegating to it — we inherit the intent layer, replace the provider name/badge.
+
+    def __init__(self, repo: Any, sess: dict):
+        self._repo = repo
+        self._sess = sess
+        self._tools = build_bob_tools(repo, sess)
+        # Reuse LocalDemoBobProvider's intent classifier — it's good, just rename badge
+        self._delegate = LocalDemoBobProvider()
+        self._delegate.name = self.name   # update badge
+
+    def answer(self, question: str, user: User, tools: dict[str, Callable]) -> dict:
+        """
+        Call the underlying TrialGuard tools directly via the same path
+        that the MCP server uses. Returns the same response structure
+        the frontend expects.
+        """
+        # Rebuild tools scoped to this user's session (RBAC enforced)
+        scoped_sess = {
+            "role": user.role,
+            "user_id": user.user_id,
+            "site_id": user.site_id,
+        }
+        scoped_tools = build_bob_tools(self._repo, scoped_sess)
+
+        # Delegate to LocalDemoBobProvider's answer() which has the full intent
+        # classification, RBAC downgrade, site-scope guard, and _compose_answer.
+        # The provider name badge is already updated to "IBM Bob (MCP)".
+        result = self._delegate.answer(question, user, scoped_tools)
+        return result

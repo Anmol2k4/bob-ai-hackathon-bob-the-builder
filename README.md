@@ -65,7 +65,7 @@ CAPA generation
 | **Severity Classification** | Transparent 6-factor prototype scoring (safety, data integrity, criticality, rights, magnitude, recurrence) |
 | **Site Risk Engine** | Multi-factor score (0–100) with leading indicators, trend, and 6-period sparkline |
 | **Predictive Risk** | Projected score for next monitoring period with worsening/improving/stable trend |
-| **IBM Bob Integration** | 13 MCP-ready tool contracts; demo adapter calls same contracts; role-scoped |
+| **IBM Bob Integration** | 13 MCP-ready tool contracts exposed as real MCP server (`src/mcp_server.py`); IBM Bob configured via `.bob/mcp.json`; RBAC enforced |
 | **CAPA Generation** | Evidence-backed problem statement, AI-generated root-cause hypothesis, corrective/preventive actions |
 | **RBAC** | 4 roles; server-side enforcement; site coordinator restricted to assigned site |
 | **Audit Trail** | All actions logged; login, site access, Bob queries, CAPA events |
@@ -80,7 +80,8 @@ CAPA generation
 | Frontend | HTML, CSS, Vanilla JavaScript (SPA) |
 | Backend | Python 3.10+, `http.server` (stdlib only) |
 | Database | MongoDB via PyMongo (auto-falls back to in-memory) |
-| AI boundary | IBM Bob integration boundary — 13 MCP-ready tool contracts |
+| IBM Bob (MCP) | `mcp[cli]>=2.2` Python SDK; 13 tools via STDIO; configured in `.bob/mcp.json` |
+| AI boundary | 13 MCP-ready tool contracts (`bob_boundary.py`); shared by web demo and IBM Bob |
 | Data | Deterministic synthetic data (seed=37037, no real patient data) |
 
 ---
@@ -92,7 +93,7 @@ CAPA generation
 git clone https://github.com/Anmol2k4/bob-ai-hackathon-bob-the-builder.git
 cd bob-ai-hackathon-bob-the-builder
 
-# Install dependency (PyMongo — optional, app works without MongoDB)
+# Install dependencies (includes MCP SDK for IBM Bob integration)
 pip install -r src/requirements.txt
 
 # Run server (auto-seeds data on first start)
@@ -102,6 +103,10 @@ python src/server.py
 Open **http://127.0.0.1:8000** in your browser.
 
 > No external API key is required. The app uses a local Demo Bob Adapter and in-memory data if MongoDB is unavailable.
+
+### IBM Bob Integration
+
+Open this project folder in IBM Bob. The `.bob/mcp.json` configuration auto-registers the `trialguard` MCP server with 13 tools. IBM Bob will discover and use them to answer natural-language questions about the trial.
 
 ### With MongoDB
 
@@ -189,6 +194,7 @@ Every step is evidence-backed, role-scoped, and traceable to a specific protocol
 ```
 src/                   Runnable application
   server.py            HTTP server — all API routes
+  mcp_server.py        IBM Bob MCP server — 13 tools via STDIO (NEW)
   engines.py           Deviation engine, severity classifier, site risk engine
   bob_boundary.py      IBM Bob integration boundary — 13 MCP tool contracts
   synthetic_data.py    Deterministic data generator
@@ -202,8 +208,15 @@ src/                   Runnable application
     index.html         Full SPA
     styles.css         Enterprise design system
     app.js             Vanilla JS application
-  requirements.txt
+  requirements.txt     (includes mcp[cli]>=2.2)
   .env.example
+  tests/
+    test_core.py       100 application tests
+    test_mcp_server.py 52 MCP integration tests (NEW)
+    test_routing.py    45 intent routing & compare tests (NEW)
+
+.bob/
+  mcp.json             IBM Bob MCP server configuration (NEW)
 
 docs/
   problem-statement.md
@@ -223,5 +236,5 @@ submission.yaml        Hackathon evaluator metadata
 - **Severity classification** is a prototype prioritization framework, not ICH/FDA/EMA guidance.
 - **Risk scoring** is a prototype multi-factor scoring model, not a regulatory risk stratification tool.
 - **Root-cause hypotheses and CAPA recommendations** are AI-generated suggestions requiring review by qualified clinical and regulatory professionals.
-- **Bob integration** uses a local demo adapter, not a live IBM Bob endpoint.
+- **IBM Bob MCP integration** is implemented and configured (`src/mcp_server.py`, `.bob/mcp.json`). Actual tool invocation through IBM Bob depends on the IBM Bob client being installed and the workspace folder being open.
 - This application is a prototype for hackathon demonstration. Not for clinical use.

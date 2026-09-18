@@ -4,6 +4,93 @@
 
 TrialGuard AI is a single-server Python web application with a vanilla JavaScript SPA frontend, a REST JSON API backend, and a MongoDB persistence layer (with automatic in-memory fallback).
 
+The application supports **two distinct integration paths** that share the same underlying business logic.
+
+---
+
+## Integration Path A — Local Demo Mode (Web Application)
+
+```
+Browser (SPA)
+     |
+     | POST /api/bob/ask
+     v
+server.py
+     |
+     v
+LocalDemoBobProvider   ← DEMO ADAPTER, NOT IBM BOB
+     |
+     | Intent classification → TrialGuard tool selection
+     v
+build_bob_tools(repo, session)
+     |
+     v
+TrialGuard tool implementations
+     |
+     v
+MongoDB / in-memory repository
+```
+
+**What it is:** A deterministic keyword-routing adapter for web demo purposes. It classifies
+user intent into one of 13 TrialGuard categories or returns an UNSUPPORTED response. It is clearly
+labelled "DEMO BOB ADAPTER (not IBM Bob)" in all responses.
+
+**What it is not:** It is not IBM Bob. It does not use LLM reasoning. It does not use the MCP protocol.
+
+### Intent Categories (Local Demo Adapter)
+
+| Intent | Tool | Example |
+|---|---|---|
+| TRIAL_OVERVIEW | `get_trial_overview` | "Give me a summary of the trial" |
+| HIGH_RISK_SITES | `list_high_risk_sites` | "Which sites are high risk?" |
+| SITE_RISK_EXPLANATION | `explain_site_risk` | "Why is Site S037 high risk?" |
+| SITE_RISK | `get_site_risk` | "What is S037's risk score?" |
+| SITE_TRENDS | `get_site_trends` | "Is S037's risk getting worse?" |
+| SITE_DEVIATIONS | `list_site_deviations` | "Show me deviations at S037" |
+| SITE_ACTIONS | `recommend_site_actions` | "What actions are recommended for S037?" |
+| CAPA_GENERATION | `generate_capa` | "Generate a CAPA for S037" |
+| CAPA_STATUS | `get_capa_status` | "What CAPAs are open?" |
+| RISK_REPORT | `generate_risk_report` | "Generate a risk report for S037" |
+| PROTOCOL_RULES | `search_protocol_rules` | "Show me protocol rules about dosing" |
+| PATIENT_PROTOCOL | `compare_patient_to_protocol` | "Check patient P-001 against protocol" |
+| **COMPARE_SITES** | `get_site_risk` + `get_site_trends` + `list_site_deviations` × 2 | "Compare S001 vs S032" |
+| **UNSUPPORTED** | *none* | "hello", "tell me a joke", "what is the weather" |
+
+Non-TrialGuard messages (greetings, jokes, weather questions, etc.) always return an UNSUPPORTED
+response that guides the user to ask a TrialGuard-related question. No tool is called.
+
+---
+
+## Integration Path B — Real IBM Bob + MCP (IMPLEMENTED)
+
+```
+IBM BOB
+     |  natural language question
+     v
+MCP Client (IBM Bob built-in)
+     |  STDIO
+     v
+src/mcp_server.py   ← REAL MCP SERVER
+     |
+     | 13 registered MCP tools (adapter layer only)
+     v
+build_bob_tools(repo, session)   ← same boundary as Path A
+     |
+     v
+TrialGuard tool implementations
+     |
+     v
+MongoDB / in-memory repository
+```
+
+**What it is:** A real MCP server using `mcp[cli]>=2.2` that IBM Bob connects to via STDIO. IBM Bob
+performs natural-language reasoning and selects the appropriate TrialGuard tool. The MCP server is
+an adapter only — no business logic is duplicated.
+
+**Configured in:** `.bob/mcp.json` (project-level, workspace-scoped)
+
+**Transport:** STDIO (IBM Bob launches `src/mcp_server.py` as a subprocess)
+
 ## System Architecture
 
 ```mermaid
@@ -24,7 +111,7 @@ graph TD
     N -.->|replace with| O[IBM Bob MCP Endpoint<br/>live endpoint — future]
 ```
 
-## IBM Bob Integration Boundary
+## IBM Bob Integration — Web Demo Path
 
 ```mermaid
 sequenceDiagram
@@ -47,10 +134,73 @@ sequenceDiagram
     S-->>U: JSON response
 ```
 
-To connect IBM Bob:
-1. Implement `IBMBobProvider(answer(question, user, tools))` 
-2. The `tools` dict is pre-built by `build_bob_tools()` — same interface
-3. Replace `LocalDemoBobProvider` in `server.py` — no other changes needed
+## IBM Bob Integration — Real MCP Path (IMPLEMENTED)
+
+```
+                     IBM BOB
+                        |
+                   MCP CLIENT
+                        |
+                     STDIO
+                        |
+                        v
+           +------------------------+
+           | TrialGuard MCP Server  |
+           | src/mcp_server.py      |
+           +----------+-------------+
+                      |
+             13 MCP tools (adapter layer)
+                      |
+                      v
+           +------------------------+
+           | TrialGuard Tool        |
+           | Boundary               |
+           | build_bob_tools()      |
+           | bob_boundary.py        |
+           +----------+-------------+
+                      |
+                      v
+           +------------------------+
+           | Existing Services      |
+           | services.py            |
+           | engines.py             |
+           +----------+-------------+
+                      |
+                      v
+                  MongoDB
+```
+
+### MCP Configuration
+
+IBM Bob discovers and launches the TrialGuard MCP server using `.bob/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "trialguard": {
+      "command": "python",
+      "args": ["${workspaceFolder}/src/mcp_server.py"],
+      "env": {
+        "TRIALGUARD_BOB_ROLE": "STUDY_MANAGER",
+        "TRIALGUARD_BOB_USER_ID": "bob-demo",
+        "TRIALGUARD_BOB_SITE_ID": ""
+      }
+    }
+  }
+}
+```
+
+### Session / Identity
+
+The MCP server reads three environment variables to construct the TrialGuard session:
+
+| Variable | Default | Notes |
+|---|---|---|
+| `TRIALGUARD_BOB_ROLE` | `STUDY_MANAGER` | Role for RBAC checks |
+| `TRIALGUARD_BOB_USER_ID` | `bob-demo` | User identity for audit trail |
+| `TRIALGUARD_BOB_SITE_ID` | `` (empty) | Empty = cross-site access for STUDY_MANAGER |
+
+Both paths share `build_bob_tools(repo, sess)` — there is one source of truth for all business logic.
 
 ## MCP-Ready Tool Contracts
 

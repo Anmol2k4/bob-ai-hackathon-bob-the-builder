@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "trialguard": {
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/src/mcp_server.py"
+      ],
+      "env": {
+        "TRIALGUARD_BOB_ROLE": "STUDY_MANAGER",
+        "TRIALGUARD_BOB_USER_ID": "bob-demo",
+        "TRIALGUARD_BOB_SITE_ID": ""
+      },
+      "alwaysAllow": [],
+      "disabled": false
+    }
+  }
+}

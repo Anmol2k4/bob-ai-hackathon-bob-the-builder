@@ -19,7 +19,7 @@ from models import ROLES, RepositoryState
 from security import hash_password, verify_password
 from synthetic_data import build_demo_state
 from engines import classify_severity, calculate_site_risk, run_deviation_engine
-from bob_boundary import LocalDemoBobProvider, tool_contracts, build_bob_tools
+from bob_boundary import MCPBobProvider, tool_contracts, build_bob_tools
 
 
 # ─── session store ────────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ if not _repo.all("users"):
     _repo.replace_all(build_demo_state())
     print("Demo data seeded.")
 
-_bob_provider = LocalDemoBobProvider()
+_bob_provider = MCPBobProvider(_repo, {"role": "STUDY_MANAGER", "user_id": "server", "site_id": None})
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────

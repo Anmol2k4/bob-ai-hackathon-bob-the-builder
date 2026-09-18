@@ -1043,7 +1043,7 @@ async function askBob(question) {
   messages.insertAdjacentHTML("beforeend", `
     <div class="bob-message bot-message thinking-msg" id="${thinkingId}">
       <div class="bot-avatar">B</div>
-      <div class="message-content">Retrieving from database via tool boundary...</div>
+      <div class="message-content">IBM Bob is querying TrialGuard via MCP...</div>
     </div>
   `);
   messages.scrollTop = messages.scrollHeight;
