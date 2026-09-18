@@ -11,6 +11,7 @@ import traceback
 import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 from typing import Any
 
 from config import settings
@@ -67,15 +68,18 @@ def _error(code: int, message: str) -> tuple[int, bytes]:
 
 def _audit(user_id: str, action: str, resource_type: str, resource_id: str = "", metadata: dict | None = None) -> None:
     import uuid
-    _repo.insert("audit_events", {
-        "event_id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "action": action,
-        "resource_type": resource_type,
-        "resource_id": resource_id,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "metadata": metadata or {},
-    })
+    import threading
+    def _write():
+        _repo.insert("audit_events", {
+            "event_id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "action": action,
+            "resource_type": resource_type,
+            "resource_id": resource_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "metadata": metadata or {},
+        })
+    threading.Thread(target=_write, daemon=True).start()
 
 
 def _parse_cookie(header: str) -> dict[str, str]:
@@ -194,6 +198,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._dashboard_summary(sess)
             elif path == "/api/dashboard/charts" and method == "GET":
                 self._dashboard_charts(sess)
+            elif path == "/api/dashboard/attention" and method == "GET":
+                self._dashboard_attention(sess)
+            elif path == "/api/dashboard/heatmap" and method == "GET":
+                self._dashboard_heatmap(sess)
 
             # Protocol
             elif path == "/api/protocol" and method == "GET":
@@ -263,6 +271,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._bob_tool(sess)
             elif path == "/api/bob/ask" and method == "POST":
                 self._bob_ask(sess)
+
+            # Search
+            elif path == "/api/search" and method == "GET":
+                self._search(sess, qs)
+
+            # Notifications
+            elif path == "/api/notifications" and method == "GET":
+                self._notifications(sess)
 
             # Users (admin)
             elif path == "/api/users" and method == "GET":
@@ -411,6 +427,91 @@ class Handler(BaseHTTPRequestHandler):
             "capa_status": dict(capa_status),
             "high_risk_sites": high_risk_sites,
         })
+
+
+    def _dashboard_attention(self, sess: dict) -> None:
+        _audit(sess["user_id"], "VIEW_DASHBOARD_ATTENTION", "dashboard")
+        risk_scores = _repo.all("risk_scores")
+        deviations = _repo.all("deviations")
+
+        if sess["role"] == "SITE_COORDINATOR":
+            sid = sess["site_id"]
+            risk_scores = [r for r in risk_scores if r["site_id"] == sid]
+            deviations = [d for d in deviations if d["site_id"] == sid]
+
+        high_risk = [r for r in risk_scores if r.get("risk_level") == "HIGH"]
+        high_risk_sorted = sorted(high_risk, key=lambda x: x.get("current_score", 0), reverse=True)
+
+        attention_sites = []
+        for r in high_risk_sorted[:3]:
+            site = _repo.find_one("sites", "site_id", r["site_id"])
+            attention_sites.append({
+                "site_id": r["site_id"],
+                "site_name": site["name"] if site else r["site_id"],
+                "current_score": r.get("current_score", 0),
+                "predicted_score": r.get("predicted_score", r.get("current_score", 0)),
+                "trend": r.get("trend", "STABLE"),
+                "leading_indicators": r.get("leading_indicators", []),
+            })
+
+        worsening = [r for r in risk_scores if r.get("trend") == "WORSENING"]
+        worsening_sorted = sorted(worsening, key=lambda x: x.get("current_score", 0), reverse=True)
+        from collections import Counter
+        early_warnings = []
+        for r in worsening_sorted[:3]:
+            site_devs = [d for d in deviations if d["site_id"] == r["site_id"]]
+            type_counts = dict(Counter(d["type"] for d in site_devs))
+            early_warnings.append({
+                "site_id": r["site_id"],
+                "current_score": r.get("current_score", 0),
+                "predicted_score": r.get("predicted_score", r.get("current_score", 0)),
+                "deviation_type_breakdown": type_counts,
+            })
+
+        if high_risk:
+            avg_high = sum(r.get("current_score", 0) for r in high_risk) / len(high_risk)
+            health_score = max(0, min(100, int(100 - (avg_high * 0.7 + len(high_risk) * 3))))
+        else:
+            health_score = 100
+
+        if health_score < 40:
+            health_level = "CRITICAL"
+        elif health_score < 65:
+            health_level = "CONCERNING"
+        else:
+            health_level = "STABLE"
+
+        self._send_json(200, {
+            "attention_sites": attention_sites,
+            "early_warnings": early_warnings,
+            "trial_health_score": health_score,
+            "health_level": health_level,
+        })
+
+    def _dashboard_heatmap(self, sess: dict) -> None:
+        _audit(sess["user_id"], "VIEW_DASHBOARD_HEATMAP", "dashboard")
+        sites = _repo.all("sites")
+        risk_scores = _repo.all("risk_scores")
+
+        risk_by_site = {r["site_id"]: r for r in risk_scores}
+
+        result = []
+        for s in sites:
+            if sess["role"] == "SITE_COORDINATOR" and s["site_id"] != sess.get("site_id"):
+                continue
+            r = risk_by_site.get(s["site_id"], {})
+            result.append({
+                "site_id": s["site_id"],
+                "name": s.get("name", s["site_id"]),
+                "location": s.get("location", ""),
+                "risk_score": r.get("current_score", 0),
+                "risk_level": r.get("risk_level", "LOW"),
+                "trend": r.get("trend", "STABLE"),
+            })
+
+        result.sort(key=lambda x: x["risk_score"], reverse=True)
+        self._send_json(200, result)
+
 
     # ── protocol ──────────────────────────────────────────────────────────────
 
@@ -780,11 +881,183 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "BOB_QUESTION", "bob", "", {"question": question[:200]})
         self._send_json(200, result)
 
+    # ── search ────────────────────────────────────────────────────────────────
+
+    def _search(self, sess: dict, qs: dict) -> None:
+        q = (qs.get("q") or [""])[0].strip().lower()
+        if not q:
+            self._send_json(200, {"sites": [], "patients": [], "deviations": [], "capas": [], "rules": []})
+            return
+
+        is_coord = sess["role"] == "SITE_COORDINATOR"
+        coord_site = sess.get("site_id")
+
+        # Sites
+        sites_results = []
+        if not is_coord:
+            for s in _repo.all("sites"):
+                if q in s.get("site_id", "").lower() or q in s.get("name", "").lower() or q in s.get("location", "").lower():
+                    sites_results.append({
+                        "id": s["site_id"],
+                        "label": s["site_id"] + " — " + s.get("name", ""),
+                        "sublabel": s.get("location", ""),
+                        "type": "site",
+                    })
+                    if len(sites_results) >= 5:
+                        break
+
+        # Patients
+        patients_results = []
+        for p in _repo.all("patients"):
+            if is_coord and p.get("site_id") != coord_site:
+                continue
+            if q in p.get("patient_id", "").lower():
+                patients_results.append({
+                    "id": p["patient_id"],
+                    "label": p["patient_id"],
+                    "sublabel": p.get("site_id", ""),
+                    "type": "patient",
+                })
+                if len(patients_results) >= 5:
+                    break
+
+        # Deviations
+        deviations_results = []
+        for d in _repo.all("deviations"):
+            if is_coord and d.get("site_id") != coord_site:
+                continue
+            if q in d.get("deviation_id", "").lower() or q in d.get("type", "").lower():
+                deviations_results.append({
+                    "id": d["deviation_id"],
+                    "label": d["deviation_id"],
+                    "sublabel": d.get("type", "").replace("_", " ").title() + " at " + d.get("site_id", ""),
+                    "type": "deviation",
+                })
+                if len(deviations_results) >= 5:
+                    break
+
+        # CAPAs
+        capas_results = []
+        for c in _repo.all("capa_records"):
+            if is_coord and c.get("site_id") != coord_site:
+                continue
+            if q in c.get("capa_id", "").lower() or q in c.get("problem_statement", "").lower():
+                capas_results.append({
+                    "id": c["capa_id"],
+                    "label": c["capa_id"],
+                    "sublabel": c.get("problem_statement", "")[:60],
+                    "type": "capa",
+                })
+                if len(capas_results) >= 5:
+                    break
+
+        # Protocol rules (all roles can search)
+        rules_results = []
+        for rule in _repo.all("protocol_rules"):
+            if q in rule.get("rule_id", "").lower() or q in rule.get("name", "").lower() or q in rule.get("domain", "").lower():
+                rules_results.append({
+                    "id": rule["rule_id"],
+                    "label": rule["rule_id"] + " — " + rule.get("name", ""),
+                    "sublabel": rule.get("domain", ""),
+                    "type": "rule",
+                })
+                if len(rules_results) >= 5:
+                    break
+
+        self._send_json(200, {
+            "sites": sites_results,
+            "patients": patients_results,
+            "deviations": deviations_results,
+            "capas": capas_results,
+            "rules": rules_results,
+        })
+
+    # ── notifications ─────────────────────────────────────────────────────────
+
+    def _notifications(self, sess: dict) -> None:
+        risk_scores = _repo.all("risk_scores")
+        capa_records = _repo.all("capa_records")
+        deviations = _repo.all("deviations")
+
+        is_coord = sess["role"] == "SITE_COORDINATOR"
+        coord_site = sess.get("site_id")
+
+        if is_coord:
+            risk_scores = [r for r in risk_scores if r.get("site_id") == coord_site]
+            capa_records = [c for c in capa_records if c.get("site_id") == coord_site]
+            deviations = [d for d in deviations if d.get("site_id") == coord_site]
+
+        notifications = []
+
+        # HIGH risk + WORSENING sites
+        for r in risk_scores:
+            if r.get("risk_level") == "HIGH" and r.get("trend") == "WORSENING":
+                sid = r["site_id"]
+                nid = "risk_" + sid
+                notifications.append({
+                    "id": nid,
+                    "type": "risk_increase",
+                    "title": f"Risk increasing at Site {sid}",
+                    "message": f"Site {sid} risk score is {r.get('current_score', 0)}/100 and worsening (predicted: {r.get('predicted_score', r.get('current_score', 0))}).",
+                    "site_id": sid,
+                    "resource_id": sid,
+                    "link_page": "site-detail",
+                    "level": "high",
+                })
+
+        # Open/In-progress CAPAs
+        for c in capa_records:
+            if c.get("status") in ("OPEN", "IN_PROGRESS"):
+                cid = c.get("capa_id", "")
+                sid = c.get("site_id", "")
+                notifications.append({
+                    "id": "capa_" + cid,
+                    "type": "capa_due",
+                    "title": f"CAPA {cid} requires attention",
+                    "message": f"CAPA {cid} at Site {sid} is {c.get('status', 'OPEN')}.",
+                    "site_id": sid,
+                    "resource_id": cid,
+                    "link_page": "capa-detail",
+                    "level": "medium",
+                })
+
+        # Major deviations
+        major_devs = sorted(
+            [d for d in deviations if d.get("severity") == "MAJOR"],
+            key=lambda x: x.get("detected_at", ""),
+            reverse=True,
+        )
+        seen_sites: set[str] = set()
+        for d in major_devs:
+            sid = d.get("site_id", "")
+            if sid in seen_sites:
+                continue
+            seen_sites.add(sid)
+            notifications.append({
+                "id": "major_dev_" + d.get("deviation_id", ""),
+                "type": "major_deviation",
+                "title": f"Major deviation detected at Site {sid}",
+                "message": f"Deviation {d.get('deviation_id', '')} ({d.get('type', '').replace('_', ' ').title()}) detected on {d.get('detected_at', '')[:10]}.",
+                "site_id": sid,
+                "resource_id": d.get("deviation_id", ""),
+                "link_page": "deviation-detail",
+                "level": "high",
+            })
+
+        # Return newest first, max 10
+        self._send_json(200, notifications[:10])
+
+
 
 # ─── entry point ──────────────────────────────────────────────────────────────
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle each request in a separate thread so parallel API calls don't queue."""
+    daemon_threads = True
+
+
 def run_server() -> None:
-    server = HTTPServer((settings.host, settings.port), Handler)
+    server = ThreadedHTTPServer((settings.host, settings.port), Handler)
     sep = "=" * 60
     print(f"\n{sep}")
     print("  TrialGuard AI - Clinical Trial Risk Monitor")

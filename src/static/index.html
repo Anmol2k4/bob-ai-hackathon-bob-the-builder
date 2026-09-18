@@ -19,9 +19,6 @@
         <p>Clinical Trial Risk Monitor</p>
       </div>
     </div>
-    <div class="login-disclaimer">
-      ⚠ This is a prototype demonstration application using entirely synthetic data. Not for clinical or regulatory use.
-    </div>
     <form id="login-form" class="login-form">
       <div class="form-group">
         <label for="email">Email address</label>
@@ -34,25 +31,6 @@
       <div id="login-error" class="login-error" style="display:none"></div>
       <button type="submit" class="btn btn-primary btn-full">Sign in</button>
     </form>
-    <div class="demo-accounts">
-      <div class="demo-accounts-title">Demo accounts (password: TrialGuard2026!)</div>
-      <div class="demo-account" data-email="manager@trialguard.demo">
-        <div class="demo-role-badge role-STUDY_MANAGER">STUDY_MANAGER</div>
-        <span>manager@trialguard.demo</span>
-      </div>
-      <div class="demo-account" data-email="site037@trialguard.demo">
-        <div class="demo-role-badge role-SITE_COORDINATOR">SITE_COORDINATOR</div>
-        <span>site037@trialguard.demo → S037 only</span>
-      </div>
-      <div class="demo-account" data-email="auditor@trialguard.demo">
-        <div class="demo-role-badge role-AUDITOR">AUDITOR</div>
-        <span>auditor@trialguard.demo</span>
-      </div>
-      <div class="demo-account" data-email="admin@trialguard.demo">
-        <div class="demo-role-badge role-SYSTEM_ADMIN">SYSTEM_ADMIN</div>
-        <span>admin@trialguard.demo</span>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -66,29 +44,34 @@
       <div class="app-name">TrialGuard AI</div>
     </div>
     <nav class="sidebar-nav">
+      <div class="nav-section-label">OVERVIEW</div>
       <a class="nav-item active" data-page="dashboard" href="#">
         <span class="nav-icon">⬛</span> Dashboard
       </a>
-      <a class="nav-item" data-page="protocol" href="#">
-        <span class="nav-icon">📋</span> Protocol Analysis
-      </a>
+      <div class="nav-section-label">MONITOR</div>
       <a class="nav-item" data-page="sites" href="#">
         <span class="nav-icon">🏥</span> Sites
       </a>
       <a class="nav-item" data-page="deviations" href="#">
         <span class="nav-icon">⚠</span> Deviations
       </a>
+      <a class="nav-item" data-page="protocol" href="#">
+        <span class="nav-icon">📋</span> Protocol Analysis
+      </a>
+      <div class="nav-section-label">ACTION</div>
       <a class="nav-item" data-page="capa" href="#">
         <span class="nav-icon">🔧</span> CAPA Management
       </a>
       <a class="nav-item" data-page="reports" href="#">
         <span class="nav-icon">📊</span> Reports
       </a>
+      <div class="nav-section-label">GOVERNANCE</div>
       <a class="nav-item" data-page="audit" href="#">
         <span class="nav-icon">📝</span> Audit Trail
       </a>
+      <div class="nav-section-label">AI INTELLIGENCE</div>
       <a class="nav-item" data-page="bob" href="#">
-        <span class="nav-icon">🤖</span> Ask IBM Bob
+        <span class="nav-icon">🤖</span> Ask Bob
       </a>
       <a class="nav-item admin-only" data-page="settings" href="#" style="display:none">
         <span class="nav-icon">⚙</span> Settings
@@ -110,12 +93,20 @@
           <span class="trial-label">Trial:</span>
           <span class="trial-name">TG-101 · Phase II Safety Study</span>
         </div>
+        <div class="global-search-wrapper">
+          <input type="text" id="global-search" class="global-search-input" placeholder="Search sites, deviations, CAPA..." autocomplete="off">
+          <div id="global-search-results" class="global-search-results" style="display:none"></div>
+        </div>
       </div>
       <div class="topbar-right">
         <div class="last-updated" id="last-updated">—</div>
         <div class="notifications" id="notifications-btn">
           <span class="notif-icon">🔔</span>
           <span class="notif-badge" id="notif-count" style="display:none">0</span>
+        </div>
+        <div id="notifications-panel" class="notifications-panel" style="display:none">
+          <div class="notif-panel-header">Notifications</div>
+          <div id="notif-panel-list" class="notif-panel-list"></div>
         </div>
         <div class="user-info" id="user-menu">
           <div class="user-avatar" id="user-avatar">?</div>
@@ -141,6 +132,50 @@
         <!-- KPI Cards -->
         <div class="kpi-grid" id="kpi-grid">
           <div class="kpi-card skeleton">—</div>
+        </div>
+
+        <!-- Trial Health Indicator + Attention + Early Warning Row -->
+        <div class="dashboard-intel-row">
+          <!-- Trial Health Indicator -->
+          <div class="trial-health-card" id="trial-health-card">
+            <div class="th-label">TRIALGUARD RISK INDICATOR</div>
+            <div class="th-score-row">
+              <span class="th-score" id="th-score">—</span>
+              <span class="th-max">/100</span>
+            </div>
+            <div class="th-level" id="th-level">—</div>
+            <div class="th-trend" id="th-trend">—</div>
+            <div class="th-disclaimer">Prototype indicator · Synthetic data only · Not regulatory guidance</div>
+          </div>
+
+          <!-- What Needs Your Attention -->
+          <div class="attention-card" id="attention-card">
+            <div class="attention-header">WHAT NEEDS YOUR ATTENTION</div>
+            <div id="attention-items" class="attention-items">
+              <div class="loading-cell">Loading...</div>
+            </div>
+          </div>
+
+          <!-- Early Warning Center -->
+          <div class="early-warning-card" id="early-warning-card">
+            <div class="ew-header">EARLY WARNING CENTER</div>
+            <div id="ew-items" class="ew-items">
+              <div class="loading-cell">Loading...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Site Risk Heatmap -->
+        <div class="data-panel">
+          <div class="panel-header">
+            <h3>Site Risk Heatmap</h3>
+            <span class="heatmap-legend">
+              <span class="hm-dot high"></span>HIGH
+              <span class="hm-dot medium"></span>MEDIUM
+              <span class="hm-dot low"></span>LOW
+            </span>
+          </div>
+          <div id="site-heatmap" class="site-heatmap"></div>
         </div>
 
         <!-- Charts row -->
@@ -335,6 +370,22 @@
               <option value="OPEN">OPEN</option>
               <option value="CLOSED">CLOSED</option>
             </select>
+            <select class="filter-select" id="devs-site-filter">
+              <option value="">All sites</option>
+            </select>
+            <select class="filter-select" id="devs-type-filter">
+              <option value="">All types</option>
+              <option value="INCORRECT_DOSE">Incorrect Dose</option>
+              <option value="MISSED_VISIT">Missed Visit</option>
+              <option value="LATE_DATA_ENTRY">Late Data Entry</option>
+              <option value="MISSING_ASSESSMENT">Missing Assessment</option>
+              <option value="ELIGIBILITY_VIOLATION">Eligibility Violation</option>
+              <option value="PROHIBITED_MEDICATION">Prohibited Medication</option>
+              <option value="VISIT_OUTSIDE_WINDOW">Visit Outside Window</option>
+            </select>
+            <input type="date" id="devs-date-from" class="filter-select" title="From date">
+            <input type="date" id="devs-date-to" class="filter-select" title="To date">
+            <button class="btn btn-ghost btn-sm" id="devs-reset-filters" onclick="resetDevFilters()">Reset</button>
           </div>
         </div>
         <div class="table-container">
@@ -356,6 +407,20 @@
               <tr><td colspan="9" class="loading-cell">Loading...</td></tr>
             </tbody>
           </table>
+        </div>
+        <!-- Pagination footer -->
+        <div class="pag-footer">
+          <span id="devs-page-summary" class="pag-summary"></span>
+          <div class="pag-right">
+            <label class="pag-size-label" for="devs-page-size">Rows per page:
+              <select id="devs-page-size" class="pag-size-select" aria-label="Rows per page">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+            <nav id="devs-paginator" class="pag-nav-row" aria-label="Deviation table pagination"></nav>
+          </div>
         </div>
         <div class="severity-disclaimer">
           ⚠ Severity classifications use a prototype prioritization framework. Not based on official ICH/FDA/EMA guidance.
@@ -391,11 +456,12 @@
                 <th>Status</th>
                 <th>Created</th>
                 <th>Due Date</th>
+                <th>Days</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody id="capa-tbody">
-              <tr><td colspan="9" class="loading-cell">Loading...</td></tr>
+              <tr><td colspan="10" class="loading-cell">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -422,28 +488,37 @@
           <div class="report-card">
             <div class="report-icon">📊</div>
             <h3>Trial Summary Report</h3>
-            <p>Overall trial status, site distribution, KPI summary.</p>
+            <p>Overall trial status, site distribution, KPI summary and high-risk sites overview.</p>
             <button class="btn btn-primary" onclick="generateReport('trial')">Generate Report</button>
           </div>
           <div class="report-card">
             <div class="report-icon">⚠</div>
             <h3>Deviations Report</h3>
-            <p>Full list of protocol deviations with severity and evidence.</p>
+            <p>Full list of protocol deviations with severity, evidence and classification.</p>
             <button class="btn btn-primary" onclick="generateReport('deviations')">Generate Report</button>
           </div>
           <div class="report-card">
             <div class="report-icon">🔧</div>
             <h3>CAPA Report</h3>
-            <p>All CAPA records with status, actions, and due dates.</p>
+            <p>All CAPA records with status, actions, owners and due dates.</p>
             <button class="btn btn-primary" onclick="generateReport('capa')">Generate Report</button>
           </div>
           <div class="report-card">
             <div class="report-icon">🏥</div>
-            <h3>Site Risk Report (S037)</h3>
-            <p>Detailed risk assessment for Site S037 with all evidence.</p>
-            <button class="btn btn-primary" onclick="generateReport('site', 'S037')">Generate Report</button>
+            <h3>Site Risk Report</h3>
+            <p>Detailed risk assessment for Site S037 — deviation evidence, leading indicators, trends.</p>
+            <button class="btn btn-primary" onclick="generateReport('site', 'S037')">S037 Risk Report</button>
           </div>
         </div>
+
+        <!-- Recent Reports -->
+        <div class="data-panel">
+          <div class="panel-header">
+            <h3>Recent Reports</h3>
+          </div>
+          <div id="recent-reports-list" class="recent-reports-list"></div>
+        </div>
+
         <div id="report-output" class="report-output" style="display:none"></div>
         <div class="disclaimer-box">
           ⚠ All reports are generated from synthetic data for demonstration purposes only. Not for clinical or regulatory use.
@@ -453,8 +528,26 @@
       <!-- ══ AUDIT TRAIL PAGE ══ -->
       <section id="page-audit" class="page">
         <div class="page-header">
-          <h2>Audit Trail</h2>
-          <p class="page-subtitle">All system events are logged. Passwords and sensitive data are never logged.</p>
+          <div>
+            <h2>Audit Trail</h2>
+            <p class="page-subtitle">All system events are logged. Passwords and sensitive data are never logged.</p>
+          </div>
+          <div class="page-actions">
+            <input class="search-input" id="audit-search" type="text" placeholder="Search events...">
+            <select class="filter-select" id="audit-action-filter">
+              <option value="">All actions</option>
+              <option value="LOGIN">LOGIN</option>
+              <option value="BOB_QUESTION">BOB_QUESTION</option>
+              <option value="GENERATE_CAPA">GENERATE_CAPA</option>
+              <option value="GENERATE_REPORT">GENERATE_REPORT</option>
+              <option value="VIEW_SITE">VIEW_SITE</option>
+              <option value="VIEW_DEVIATIONS">VIEW_DEVIATIONS</option>
+              <option value="RISK_RECALCULATED">RISK_RECALCULATED</option>
+            </select>
+            <select class="filter-select" id="audit-user-filter">
+              <option value="">All users</option>
+            </select>
+          </div>
         </div>
         <div class="table-container">
           <table class="data-table" id="audit-table">
@@ -478,18 +571,14 @@
       <!-- ══ ASK IBM BOB PAGE ══ -->
       <section id="page-bob" class="page">
         <div class="page-header">
-          <h2>Ask IBM Bob</h2>
+          <h2>TrialGuard AI Assistant</h2>
           <div class="bob-provider-badge">
             <span class="bob-badge-icon">🤖</span>
-            <span id="bob-provider-name">Demo Adapter</span>
-            <span class="bob-boundary-label">IBM BOB INTEGRATION BOUNDARY</span>
+            <span id="bob-provider-name">TrialGuard Demo Assistant</span>
           </div>
         </div>
         <div class="bob-layout">
           <div class="bob-chat-panel">
-            <div class="bob-disclaimer">
-              <strong>⚠ Integration Boundary Notice:</strong> This panel uses a local Demo Adapter that calls MCP-ready tool contracts. It is NOT connected to IBM Bob. The same tool interface will work with a real IBM Bob MCP endpoint. All factual answers come from the application database — no hallucination.
-            </div>
             <div class="bob-messages" id="bob-messages">
               <div class="bob-message bot-message">
                 <div class="bot-avatar">B</div>
@@ -549,7 +638,10 @@
   </div>
 
   <!-- ════════ BOB FLOAT BUTTON (on other pages) ════════ -->
-  <button class="bob-float-btn" id="bob-float-btn" onclick="loadPage('bob')" title="Ask IBM Bob">🤖</button>
+  <div class="bob-float-wrapper">
+    <div class="bob-context-tooltip" id="bob-context-tooltip" style="display:none"></div>
+    <button class="bob-float-btn" id="bob-float-btn" onclick="loadPage('bob')" title="Ask TrialGuard Demo Assistant">🤖</button>
+  </div>
 
 </div>
 

@@ -9,6 +9,9 @@
 // ── State ──────────────────────────────────────────────────────────────────
 let _session = null;
 let _charts = {};
+let _currentContext = null; // { type: 'site'|'deviation'|'capa', id: string, label: string }
+let _notifications = [];
+let _allAuditEvents = [];
 
 // ── API layer ──────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -100,6 +103,8 @@ function showApp() {
   setupNav();
   setupFilters();
   setupBobInput();
+  setupGlobalSearch();
+  loadNotifications();
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
@@ -112,6 +117,21 @@ function setupNav() {
   });
   document.getElementById("sidebar-toggle").addEventListener("click", () => {
     document.getElementById("sidebar").classList.toggle("open");
+  });
+  const notifBtn = document.getElementById("notifications-btn");
+  if (notifBtn) {
+    notifBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const panel = document.getElementById("notifications-panel");
+      if (panel) panel.style.display = panel.style.display === "none" ? "block" : "none";
+    });
+  }
+  // Close notifications panel and search results on click outside
+  document.addEventListener("click", () => {
+    const panel = document.getElementById("notifications-panel");
+    if (panel) panel.style.display = "none";
+    const searchResults = document.getElementById("global-search-results");
+    if (searchResults) searchResults.style.display = "none";
   });
 }
 
@@ -133,18 +153,18 @@ function loadPage(page, params) {
 
   // Load page data
   switch (page) {
-    case "dashboard": loadDashboard(); break;
-    case "protocol": loadProtocol(); break;
-    case "sites": loadSites(); break;
-    case "site-detail": loadSiteDetail(params); break;
-    case "deviations": loadDeviations(); break;
-    case "deviation-detail": loadDeviationDetail(params); break;
-    case "capa": loadCapa(); break;
-    case "capa-detail": loadCapaDetail(params); break;
-    case "reports": break;
-    case "audit": loadAudit(); break;
-    case "bob": loadBobTools(); break;
-    case "settings": loadSettings(); break;
+    case "dashboard": loadDashboard(); setPageContext(null); break;
+    case "protocol": loadProtocol(); setPageContext(null); break;
+    case "sites": loadSites(); setPageContext(null); break;
+    case "site-detail": loadSiteDetail(params); setPageContext("site", params, "Site " + params); break;
+    case "deviations": loadDeviations(); setPageContext(null); break;
+    case "deviation-detail": loadDeviationDetail(params); setPageContext("deviation", params, "Deviation " + params); break;
+    case "capa": loadCapa(); setPageContext(null); break;
+    case "capa-detail": loadCapaDetail(params); setPageContext("capa", params, "CAPA " + params); break;
+    case "reports": renderRecentReports(); setPageContext(null); break;
+    case "audit": loadAudit(); setPageContext(null); break;
+    case "bob": loadBobTools(); setPageContext(null); break;
+    case "settings": loadSettings(); setPageContext(null); break;
   }
 }
 window.loadPage = loadPage;
@@ -159,8 +179,13 @@ async function loadDashboard() {
     renderKpis(summary);
     renderHighRiskTable(charts.high_risk_sites || []);
     renderCharts(charts);
-    await loadRecentDeviations();
-    await loadProtocolCompliance();
+    // Run all remaining independent fetches in parallel
+    await Promise.all([
+      loadRecentDeviations(),
+      loadProtocolCompliance(),
+      loadDashboardAttention(),
+      loadSiteHeatmap(),
+    ]);
     // Show notification badge
     if (summary.high_risk_sites > 0) {
       const badge = document.getElementById("notif-count");
@@ -190,6 +215,8 @@ function renderKpis(s) {
       <div class="kpi-card-sub">${c.sub}</div>
     </div>`)
     .join("");
+  const subtitle = document.querySelector("#page-dashboard .page-subtitle");
+  if (subtitle) subtitle.innerHTML = `Trial risk overview · <span class="data-through">Synthetic data · Data through 18 Sep 2026</span>`;
 }
 
 function renderHighRiskTable(sites) {
@@ -339,7 +366,7 @@ async function loadProtocol() {
     const rules = protocol.rules || [];
 
     document.getElementById("protocol-rules-list").innerHTML = rules.map((r) => `
-      <div class="protocol-rule">
+      <div class="protocol-rule" id="rule-${r.rule_id}">
         <div class="protocol-rule-header">
           <span class="rule-id">${r.rule_id}</span>
           <span class="rule-domain">${r.domain}</span>
@@ -348,6 +375,11 @@ async function loadProtocol() {
         <div class="rule-name">${r.name}</div>
         <div class="rule-expected">Expected: <strong>${r.expected}</strong></div>
         ${r.description ? `<div class="rule-expected" style="margin-top:6px;font-size:11px">${r.description}</div>` : ""}
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-secondary" onclick="showPatientCompare('${r.rule_id}','${r.name.replace(/'/g,'&#39;')}','${r.expected.replace(/'/g,'&#39;')}')">Compare Patient</button>
+          <button class="btn btn-sm btn-ghost" onclick="loadPage('bob');setTimeout(()=>askBob('What is protocol rule ${r.rule_id}?'),200)">Ask Bob</button>
+        </div>
+        <div id="patient-compare-${r.rule_id}" style="display:none"></div>
       </div>
     `).join("");
 
@@ -422,6 +454,20 @@ function setupFilters() {
   document.getElementById("devs-search").addEventListener("input", applyDevFilters);
   document.getElementById("devs-severity-filter").addEventListener("change", applyDevFilters);
   document.getElementById("devs-status-filter").addEventListener("change", applyDevFilters);
+  const siteFilter = document.getElementById("devs-site-filter");
+  const typeFilter = document.getElementById("devs-type-filter");
+  const dateFrom = document.getElementById("devs-date-from");
+  const dateTo = document.getElementById("devs-date-to");
+  if (siteFilter) siteFilter.addEventListener("change", applyDevFilters);
+  if (typeFilter) typeFilter.addEventListener("change", applyDevFilters);
+  if (dateFrom) dateFrom.addEventListener("change", applyDevFilters);
+  if (dateTo) dateTo.addEventListener("change", applyDevFilters);
+  const pageSizeEl = document.getElementById("devs-page-size");
+  if (pageSizeEl) pageSizeEl.addEventListener("change", () => {
+    _devPageSize = parseInt(pageSizeEl.value, 10) || 10;
+    _devCurrentPage = 1;
+    _renderDevsPage();
+  });
 }
 
 function applyFilters() {
@@ -522,7 +568,8 @@ async function loadSiteDetail(siteId) {
       </div>
       <div class="site-data-panel">
         <h4>Recommended Actions</h4>
-        <button class="btn btn-sm btn-primary" onclick="loadPage('bob');setTimeout(()=>askBob('Recommend actions for Site ${siteId}'),200)" style="margin-bottom:8px;width:100%">🤖 Ask Bob for Actions</button>
+        <button class="btn btn-sm btn-primary" onclick="investigateSiteWithBob('${siteId}')" style="margin-bottom:8px;width:100%">🔍 Investigate with Bob</button>
+        <button class="btn btn-sm btn-secondary" onclick="loadPage('bob');setTimeout(()=>askBob('Recommend actions for Site ${siteId}'),200)" style="margin-bottom:8px;width:100%">🤖 Ask for Recommendations</button>
         <button class="btn btn-sm btn-secondary" onclick="generateReport('site','${siteId}')" style="width:100%;margin-bottom:8px">📊 Generate Site Report</button>
         <button class="btn btn-sm btn-secondary" onclick="openCapaModalForSite('${siteId}')" style="width:100%">🔧 Generate CAPA</button>
       </div>
@@ -561,16 +608,37 @@ async function loadSiteDetail(siteId) {
 
 // ── Deviations ─────────────────────────────────────────────────────────────
 let _allDevs = [];
+let _devCurrentPage = 1;
+let _devPageSize = 10;
+let _devFilteredCache = [];
 
 async function loadDeviations() {
   try {
     _allDevs = await get("/api/deviations");
-    renderDevsTable(_allDevs);
+    // Populate site filter
+    const siteFilter = document.getElementById("devs-site-filter");
+    if (siteFilter && _allDevs.length) {
+      const sites = [...new Set(_allDevs.map((d) => d.site_id))].sort();
+      siteFilter.innerHTML = `<option value="">All sites</option>` + sites.map((s) => `<option value="${s}">${s}</option>`).join("");
+    }
+    _devCurrentPage = 1;
+    _devFilteredCache = _allDevs;
+    _renderDevsPage();
   } catch {}
 }
 
-function renderDevsTable(devs) {
-  document.getElementById("devs-tbody").innerHTML = devs.map((d) => `<tr>
+/** Render exactly one page of rows, plus update the pagination footer. */
+function _renderDevsPage() {
+  const total = _devFilteredCache.length;
+  const totalPages = Math.max(1, Math.ceil(total / _devPageSize));
+  if (_devCurrentPage > totalPages) _devCurrentPage = totalPages;
+
+  const start = (_devCurrentPage - 1) * _devPageSize;
+  const end   = Math.min(start + _devPageSize, total);
+  const slice = _devFilteredCache.slice(start, end);
+
+  // Rows
+  document.getElementById("devs-tbody").innerHTML = slice.map((d) => `<tr>
     <td><button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${d.deviation_id}')">${d.deviation_id}</button></td>
     <td><button class="btn btn-sm btn-ghost" onclick="loadPage('site-detail','${d.site_id}')">${d.site_id}</button></td>
     <td>${d.patient_id}</td>
@@ -581,20 +649,110 @@ function renderDevsTable(devs) {
     <td><span class="badge badge-${d.status}">${d.status}</span></td>
     <td><button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${d.deviation_id}')">View</button></td>
   </tr>`).join("") || `<tr><td colspan="9" class="loading-cell">No deviations match the filter.</td></tr>`;
+
+  // Summary text
+  const summaryEl = document.getElementById("devs-page-summary");
+  if (summaryEl) {
+    summaryEl.textContent = total === 0
+      ? "No deviations match the filter."
+      : `Showing ${start + 1}–${end} of ${total} deviation${total !== 1 ? "s" : ""}`;
+  }
+
+  // Rows-per-page selector sync
+  const sizeEl = document.getElementById("devs-page-size");
+  if (sizeEl) sizeEl.value = String(_devPageSize);
+
+  // Page buttons
+  const paginatorEl = document.getElementById("devs-paginator");
+  if (!paginatorEl) return;
+
+  const prevDisabled = _devCurrentPage <= 1 ? "disabled" : "";
+  const nextDisabled = _devCurrentPage >= totalPages ? "disabled" : "";
+
+  let pageButtons = "";
+  if (totalPages <= 7) {
+    // Show all page numbers
+    for (let i = 1; i <= totalPages; i++) {
+      pageButtons += _pageBtn(i, _devCurrentPage);
+    }
+  } else {
+    // Smart ellipsis: always show first, last, and window around current
+    const pages = _pageWindow(_devCurrentPage, totalPages);
+    let prev = 0;
+    for (const p of pages) {
+      if (p - prev > 1) pageButtons += `<span class="pag-ellipsis" aria-hidden="true">…</span>`;
+      pageButtons += _pageBtn(p, _devCurrentPage);
+      prev = p;
+    }
+  }
+
+  paginatorEl.innerHTML = `
+    <button class="pag-btn pag-nav" ${prevDisabled} aria-label="Previous page"
+      onclick="_devGoPage(${_devCurrentPage - 1})">‹ Prev</button>
+    ${pageButtons}
+    <button class="pag-btn pag-nav" ${nextDisabled} aria-label="Next page"
+      onclick="_devGoPage(${_devCurrentPage + 1})">Next ›</button>
+  `;
 }
 
-function applyDevFilters() {
+function _pageBtn(n, current) {
+  const active = n === current ? " pag-active" : "";
+  return `<button class="pag-btn${active}" aria-label="Page ${n}" aria-current="${n === current ? 'page' : 'false'}"
+    onclick="_devGoPage(${n})">${n}</button>`;
+}
+
+/** Returns array of page numbers to show (first, last, +/- 2 around current). */
+function _pageWindow(current, total) {
+  const set = new Set([1, 2, total - 1, total, current - 1, current, current + 1]);
+  return [...set].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+}
+
+function _devGoPage(n) {
+  const totalPages = Math.max(1, Math.ceil(_devFilteredCache.length / _devPageSize));
+  _devCurrentPage = Math.max(1, Math.min(n, totalPages));
+  _renderDevsPage();
+  // Scroll table back into view
+  document.getElementById("devs-table")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+window._devGoPage = _devGoPage;
+
+function _getFilteredDevs() {
   const q = document.getElementById("devs-search").value.toLowerCase();
   const sev = document.getElementById("devs-severity-filter").value;
   const status = document.getElementById("devs-status-filter").value;
-  const filtered = _allDevs.filter((d) => {
+  const site = (document.getElementById("devs-site-filter") || {}).value || "";
+  const type = (document.getElementById("devs-type-filter") || {}).value || "";
+  const dateFrom = (document.getElementById("devs-date-from") || {}).value || "";
+  const dateTo = (document.getElementById("devs-date-to") || {}).value || "";
+  return _allDevs.filter((d) => {
     const matchQ = !q || d.deviation_id.toLowerCase().includes(q) || d.site_id.toLowerCase().includes(q) || d.patient_id.toLowerCase().includes(q) || (d.type || "").toLowerCase().includes(q);
     const matchSev = !sev || d.severity === sev;
     const matchStatus = !status || d.status === status;
-    return matchQ && matchSev && matchStatus;
+    const matchSite = !site || d.site_id === site;
+    const matchType = !type || d.type === type;
+    const detected = d.detected_at || "";
+    const matchFrom = !dateFrom || detected >= dateFrom;
+    const matchTo = !dateTo || detected <= dateTo;
+    return matchQ && matchSev && matchStatus && matchSite && matchType && matchFrom && matchTo;
   });
-  renderDevsTable(filtered);
 }
+
+function applyDevFilters() {
+  _devCurrentPage = 1;  // always reset to page 1 on filter change
+  _devFilteredCache = _getFilteredDevs();
+  _renderDevsPage();
+}
+
+function resetDevFilters() {
+  ["devs-search", "devs-severity-filter", "devs-status-filter", "devs-site-filter", "devs-type-filter", "devs-date-from", "devs-date-to"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  _devCurrentPage = 1;
+  _devFilteredCache = _allDevs;
+  _renderDevsPage();
+}
+window.resetDevFilters = resetDevFilters;
 
 async function loadDeviationDetail(devId) {
   if (!devId) return;
@@ -695,22 +853,33 @@ async function loadCapa() {
       { label: "Completed", value: totals.completed, cls: "kpi-ok" },
     ].map((c) => `<div class="kpi-card ${c.cls}"><div class="kpi-card-label">${c.label}</div><div class="kpi-card-value">${c.value}</div></div>`).join("");
 
-    document.getElementById("capa-tbody").innerHTML = records.map((c) => `<tr>
-      <td><button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">${c.capa_id}</button></td>
-      <td>${c.site_id}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.problem_statement}</td>
-      <td><span class="badge badge-${(c.priority || "").toLowerCase() === "high" ? "major" : (c.priority || "").toLowerCase() === "medium" ? "minor" : "admin"}">${c.priority}</span></td>
-      <td>${c.owner}</td>
-      <td><span class="badge badge-${c.status}">${c.status}</span></td>
-      <td>${(c.created_at || "").split("T")[0]}</td>
-      <td>${c.due_date || "—"}</td>
-      <td>
-        <button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">View</button>
-        ${["STUDY_MANAGER", "SYSTEM_ADMIN", "SITE_COORDINATOR"].includes(_session?.role) ? `<button class="btn btn-sm btn-ghost" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">Update</button>` : ""}
-      </td>
-    </tr>`).join("") || `<tr><td colspan="9" class="loading-cell">No CAPA records found.</td></tr>`;
+    document.getElementById("capa-tbody").innerHTML = records.map((c) => {
+      const dueDate = c.due_date ? new Date(c.due_date) : null;
+      const today = new Date();
+      const daysRemaining = dueDate ? Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24)) : null;
+      const daysHtml = daysRemaining !== null
+        ? (daysRemaining < 0
+          ? `<span class="days-overdue">${Math.abs(daysRemaining)}d overdue</span>`
+          : `<span class="days-remaining">${daysRemaining}d left</span>`)
+        : "—";
+      return `<tr>
+        <td><button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">${c.capa_id}</button></td>
+        <td>${c.site_id}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.problem_statement}</td>
+        <td><span class="badge badge-${(c.priority || "").toLowerCase() === "high" ? "major" : (c.priority || "").toLowerCase() === "medium" ? "minor" : "admin"}">${c.priority}</span></td>
+        <td>${c.owner}</td>
+        <td><span class="badge badge-${c.status}">${c.status}</span></td>
+        <td>${(c.created_at || "").split("T")[0]}</td>
+        <td>${c.due_date || "—"}</td>
+        <td>${daysHtml}</td>
+        <td>
+          <button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">View</button>
+          ${["STUDY_MANAGER", "SYSTEM_ADMIN", "SITE_COORDINATOR"].includes(_session?.role) ? `<button class="btn btn-sm btn-ghost" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">Update</button>` : ""}
+        </td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="10" class="loading-cell">No CAPA records found.</td></tr>`;
   } catch (err) {
-    document.getElementById("capa-tbody").innerHTML = `<tr><td colspan="9" class="loading-cell">Error: ${err.message}</td></tr>`;
+    document.getElementById("capa-tbody").innerHTML = `<tr><td colspan="10" class="loading-cell">Error: ${err.message}</td></tr>`;
   }
 }
 
@@ -762,11 +931,31 @@ async function loadCapaDetail(capaId) {
             <div class="detail-row"><span class="detail-label">Deviations</span><span class="detail-value">${(c.deviation_ids || []).length} linked</span></div>
           </div>
           <div class="detail-card">
+            <h4>CAPA Workflow</h4>
+            <div class="capa-workflow" style="padding:12px 0;overflow-x:auto">
+              ${['Issue Identified','Evidence','Root Cause','Corrective Actions','Preventive Actions','Review','Approval'].map((step, i) => {
+                const statusMap = {'OPEN':1,'IN_PROGRESS':4,'COMPLETED':6,'OVERDUE':1};
+                const currentStepIdx = statusMap[c.status] || 0;
+                const stepCls = i < currentStepIdx ? 'done' : (i === currentStepIdx ? 'active' : '');
+                return `<div class="capa-workflow-step">
+                  <div class="capa-step-dot ${stepCls}">${i < currentStepIdx ? '✓' : i+1}</div>
+                  <div class="capa-step-label ${stepCls}">${step}</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          <div class="detail-card" style="margin-top:16px">
             <h4>Actions</h4>
-            ${["STUDY_MANAGER", "SYSTEM_ADMIN", "SITE_COORDINATOR"].includes(_session?.role) ? `
+            ${["STUDY_MANAGER", "SYSTEM_ADMIN"].includes(_session?.role) ? `
+              <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','COMPLETED')">✓ Approve CAPA</button>
+              <button class="btn btn-danger btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','OPEN')">✗ Reject / Reopen</button>
+            ` : ""}
+            ${["SITE_COORDINATOR"].includes(_session?.role) ? `
               <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">Update Status</button>
             ` : ""}
+            <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">⚙ Change Status</button>
             <button class="btn btn-ghost btn-full" onclick="generateReport('site','${c.site_id}')">📊 Site Report</button>
+            <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="loadPage('bob');setTimeout(()=>askBob('Explain CAPA ${c.capa_id} for site ${c.site_id}'),200)">🤖 Ask Bob</button>
           </div>
         </div>
       </div>
@@ -823,6 +1012,18 @@ function openCapaStatusModal(capaId, currentStatus) {
 }
 window.openCapaStatusModal = openCapaStatusModal;
 
+async function submitCapaAction(capaId, newStatus) {
+  const confirmMsg = newStatus === 'COMPLETED' ? `Approve CAPA ${capaId}?` : `Reject/Reopen CAPA ${capaId}?`;
+  if (!confirm(confirmMsg)) return;
+  try {
+    await patch(`/api/capa/${capaId}`, { status: newStatus });
+    loadPage('capa-detail', capaId);
+  } catch (err) {
+    alert(`Update failed: ${err.message}`);
+  }
+}
+window.submitCapaAction = submitCapaAction;
+
 async function submitCapaStatusUpdate() {
   const capaId = document.getElementById("capa-update-id").value;
   const status = document.getElementById("capa-new-status").value;
@@ -837,6 +1038,33 @@ async function submitCapaStatusUpdate() {
 window.submitCapaStatusUpdate = submitCapaStatusUpdate;
 
 // ── Reports ────────────────────────────────────────────────────────────────
+// Recent reports tracker
+let _recentReports = [];
+
+function addRecentReport(type, title, siteId) {
+  _recentReports.unshift({ type, title, siteId, generated: new Date().toLocaleString() });
+  if (_recentReports.length > 10) _recentReports.pop();
+  renderRecentReports();
+}
+
+function renderRecentReports() {
+  const el = document.getElementById("recent-reports-list");
+  if (!el) return;
+  if (!_recentReports.length) {
+    el.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">No reports generated yet. Use the report cards above to generate your first report.</div>`;
+    return;
+  }
+  el.innerHTML = `<table class="data-table">
+    <thead><tr><th>Report Name</th><th>Type</th><th>Generated</th><th>Action</th></tr></thead>
+    <tbody>${_recentReports.map((r) => `<tr>
+      <td>${r.title}</td>
+      <td><span class="badge badge-info">${r.type.toUpperCase()}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.generated}</td>
+      <td><button class="btn btn-sm btn-ghost" onclick="generateReport('${r.type}','${r.siteId||''}')">View</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
 async function generateReport(type, siteId) {
   const modal = document.getElementById("report-modal");
   const body = document.getElementById("report-modal-body");
@@ -845,25 +1073,27 @@ async function generateReport(type, siteId) {
   modal.style.display = "flex";
 
   try {
-    let data, html = "";
+    let data, html = "", titleText = "";
     if (type === "trial") {
       data = await get("/api/reports/trial");
-      title.textContent = "Trial Summary Report";
+      titleText = "Trial Summary Report";
       html = renderTrialReport(data);
     } else if (type === "deviations") {
       data = await get("/api/reports/deviations");
-      title.textContent = "Deviations Report";
+      titleText = "Deviations Report";
       html = renderDevsReport(data);
     } else if (type === "capa") {
       data = await get("/api/reports/capa");
-      title.textContent = "CAPA Report";
+      titleText = "CAPA Report";
       html = renderCapaReport(data);
     } else if (type === "site") {
       data = await get(`/api/reports/site/${siteId}`);
-      title.textContent = `Site Risk Report — ${siteId}`;
+      titleText = `Site Risk Report — ${siteId}`;
       html = renderSiteReport(data, siteId);
     }
+    title.textContent = titleText;
     body.innerHTML = html;
+    addRecentReport(type, titleText, siteId);
   } catch (err) {
     body.innerHTML = `<div class="disclaimer-box">Error generating report: ${err.message}</div>`;
   }
@@ -970,18 +1200,57 @@ window.printReport = printReport;
 // ── Audit ──────────────────────────────────────────────────────────────────
 async function loadAudit() {
   try {
-    const events = await get("/api/audit");
-    document.getElementById("audit-tbody").innerHTML = events.map((e) => `<tr>
-      <td style="font-size:11px;white-space:nowrap">${(e.timestamp || "").replace("T", " ").replace("Z", "").split(".")[0]}</td>
-      <td>${e.user_id}</td>
-      <td><span class="audit-action-badge">${e.action}</span></td>
-      <td>${e.resource_type}</td>
-      <td>${e.resource_id || "—"}</td>
-      <td style="font-size:11px;color:var(--text-muted)">${Object.keys(e.metadata || {}).length ? JSON.stringify(e.metadata) : "—"}</td>
-    </tr>`).join("") || `<tr><td colspan="6" class="loading-cell">No events.</td></tr>`;
+    _allAuditEvents = await get("/api/audit");
+    // Populate user filter
+    const userFilter = document.getElementById("audit-user-filter");
+    if (userFilter && _allAuditEvents.length) {
+      const users = [...new Set(_allAuditEvents.map((e) => e.user_id))].sort();
+      userFilter.innerHTML = `<option value="">All users</option>` + users.map((u) => `<option value="${u}">${u}</option>`).join("");
+    }
+    renderAuditTable(_allAuditEvents);
+    setupAuditFilters();
   } catch (err) {
     document.getElementById("audit-tbody").innerHTML = `<tr><td colspan="6" class="loading-cell">Error: ${err.message}</td></tr>`;
   }
+}
+
+function renderAuditTable(events) {
+  const fmtDate = (ts) => {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + " " + d.toTimeString().slice(0, 8);
+  };
+  document.getElementById("audit-tbody").innerHTML = events.map((e) => `<tr>
+    <td style="font-size:11px;white-space:nowrap">${fmtDate(e.timestamp)}</td>
+    <td>${e.user_id}</td>
+    <td><span class="audit-action-badge">${e.action}</span></td>
+    <td>${e.resource_type}</td>
+    <td>${e.resource_id || "—"}</td>
+    <td style="font-size:11px;color:var(--text-muted)">${Object.keys(e.metadata || {}).length ? JSON.stringify(e.metadata) : "—"}</td>
+  </tr>`).join("") || `<tr><td colspan="6" class="loading-cell">No events.</td></tr>`;
+}
+
+function setupAuditFilters() {
+  const search = document.getElementById("audit-search");
+  const actionFilter = document.getElementById("audit-action-filter");
+  const userFilter = document.getElementById("audit-user-filter");
+
+  const applyAuditFilters = () => {
+    const q = (search?.value || "").toLowerCase();
+    const action = actionFilter?.value || "";
+    const user = userFilter?.value || "";
+    const filtered = _allAuditEvents.filter((e) => {
+      const matchQ = !q || e.user_id.toLowerCase().includes(q) || e.action.toLowerCase().includes(q) || (e.resource_id || "").toLowerCase().includes(q) || e.resource_type.toLowerCase().includes(q);
+      const matchAction = !action || e.action === action;
+      const matchUser = !user || e.user_id === user;
+      return matchQ && matchAction && matchUser;
+    });
+    renderAuditTable(filtered);
+  };
+
+  if (search) search.addEventListener("input", applyAuditFilters);
+  if (actionFilter) actionFilter.addEventListener("change", applyAuditFilters);
+  if (userFilter) userFilter.addEventListener("change", applyAuditFilters);
 }
 
 // ── IBM Bob ────────────────────────────────────────────────────────────────
@@ -1043,7 +1312,7 @@ async function askBob(question) {
   messages.insertAdjacentHTML("beforeend", `
     <div class="bob-message bot-message thinking-msg" id="${thinkingId}">
       <div class="bot-avatar">B</div>
-      <div class="message-content">IBM Bob is querying TrialGuard via MCP...</div>
+      <div class="message-content">TrialGuard Demo Assistant is querying tools...</div>
     </div>
   `);
   messages.scrollTop = messages.scrollHeight;
@@ -1069,6 +1338,19 @@ async function askBob(question) {
             ${provider ? `<span class="provider-chip">${escapeHtml(provider)}</span>` : ""}
           </div>
           ${disclaimer ? `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);font-style:italic">⚠ ${escapeHtml(disclaimer)}</div>` : ""}
+          ${result.tool_used && result.tool_result ? `
+            <div class="bob-evidence-panel">
+              <button class="bob-evidence-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Investigation Evidence':'▼ Show Investigation Evidence'">▼ Show Investigation Evidence</button>
+              <div class="bob-evidence-content">
+                <div class="evidence-row"><span class="evidence-label">Tool used:</span><span class="evidence-val">${escapeHtml(toolUsed)}</span></div>
+                <div class="evidence-row"><span class="evidence-label">Provider:</span><span class="evidence-val">${escapeHtml(provider)}</span></div>
+                <div class="evidence-row"><span class="evidence-label">Data source:</span><span class="evidence-val">TrialGuard application database</span></div>
+                <div class="evidence-tools">
+                  ${toolUsed ? `<span class="evidence-tool-chip">${escapeHtml(toolUsed)}</span>` : ""}
+                </div>
+              </div>
+            </div>
+          ` : ""}
         </div>
       </div>
     `);
@@ -1132,6 +1414,316 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+
+// ── Page Context ────────────────────────────────────────────────────────────
+function setPageContext(type, id, label) {
+  _currentContext = type ? { type, id, label } : null;
+  const tooltip = document.getElementById("bob-context-tooltip");
+  if (tooltip) {
+    if (_currentContext) {
+      tooltip.textContent = "Context: " + _currentContext.label;
+      tooltip.style.display = "block";
+    } else {
+      tooltip.style.display = "none";
+    }
+  }
+}
+window.setPageContext = setPageContext;
+
+// ── Dashboard Attention ─────────────────────────────────────────────────────
+async function loadDashboardAttention() {
+  try {
+    const data = await get("/api/dashboard/attention");
+
+    // Trial Health Indicator
+    const scoreEl = document.getElementById("th-score");
+    const levelEl = document.getElementById("th-level");
+    const trendEl = document.getElementById("th-trend");
+    if (scoreEl) {
+      const score = data.trial_health_score || 0;
+      const riskScore = 100 - score; // convert health to risk
+      scoreEl.textContent = riskScore;
+      const level = data.health_level || "STABLE";
+      levelEl.textContent = level;
+      levelEl.className = "th-level th-level-" + level.toLowerCase();
+      const worsening = (data.attention_sites || []).filter((s) => s.trend === "WORSENING").length;
+      trendEl.textContent = worsening > 0 ? `↑ ${worsening} site(s) WORSENING` : "→ STABLE";
+      scoreEl.style.color = riskScore >= 65 ? "var(--risk-high)" : riskScore >= 35 ? "var(--risk-medium)" : "var(--risk-low)";
+    }
+
+    // What Needs Attention
+    const attItems = document.getElementById("attention-items");
+    if (attItems) {
+      const sites = data.attention_sites || [];
+      if (!sites.length) {
+        attItems.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No high-risk sites requiring immediate attention.</div>';
+      } else {
+        attItems.innerHTML = sites.map((s) => {
+          const dotClass = s.risk_level === "HIGH" ? "high" : s.risk_level === "MEDIUM" ? "medium" : "low";
+          return `<div class="attention-item">
+            <div class="attention-dot ${dotClass}"></div>
+            <div style="flex:1;min-width:0">
+              <div class="attention-site">${s.site_id}</div>
+              <div class="attention-detail">Risk ${s.current_score} → Projected ${s.predicted_score} · ${s.trend}</div>
+            </div>
+            <div class="attention-actions">
+              <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${s.site_id}')">Investigate</button>
+            </div>
+          </div>`;
+        }).join("");
+      }
+    }
+
+    // Early Warning Center
+    const ewItems = document.getElementById("ew-items");
+    if (ewItems) {
+      const warnings = data.early_warnings || [];
+      if (!warnings.length) {
+        ewItems.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">No active early warnings.</div>';
+      } else {
+        ewItems.innerHTML = warnings.map((w) => {
+          const indHtml = (w.leading_indicators || []).slice(0, 3).map((i) => `<span class="ew-indicator">${escapeHtml(i)}</span>`).join("");
+          return `<div class="ew-item">
+            <div class="ew-item-site">${w.site_id}</div>
+            <div class="ew-item-scores">Risk: ${w.current_score}/100 → Projected: ${w.predicted_score}/100</div>
+            <div class="ew-item-indicators">${indHtml}</div>
+            <div class="ew-actions">
+              <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${w.site_id}')">Investigate</button>
+              <button class="btn btn-sm btn-secondary" onclick="loadPage('bob');setTimeout(()=>askBob('Why is Site ${w.site_id} high risk?'),200)">Ask Bob</button>
+            </div>
+          </div>`;
+        }).join("");
+      }
+    }
+  } catch (err) {
+    console.error("Attention panel failed:", err);
+  }
+}
+
+// ── Site Heatmap ────────────────────────────────────────────────────────────
+async function loadSiteHeatmap() {
+  try {
+    const sites = await get("/api/dashboard/heatmap");
+    const container = document.getElementById("site-heatmap");
+    if (!container) return;
+    if (!sites.length) {
+      container.innerHTML = '<div class="state-empty">No site data available.</div>';
+      return;
+    }
+    container.innerHTML = sites.map((s) => {
+      const cls = s.risk_level === "HIGH" ? "hm-high" : s.risk_level === "MEDIUM" ? "hm-medium" : "hm-low";
+      return `<div class="hm-cell ${cls}" onclick="loadPage('site-detail','${s.site_id}')" title="${escapeHtml(s.name || s.site_id)} — ${s.risk_level} (${s.risk_score}/100)">
+        <span class="hm-id">${s.site_id}</span>
+        <span class="hm-score">${s.risk_score}</span>
+      </div>`;
+    }).join("");
+  } catch (err) {
+    console.error("Heatmap failed:", err);
+  }
+}
+
+// ── Notifications ───────────────────────────────────────────────────────────
+async function loadNotifications() {
+  try {
+    _notifications = await get("/api/notifications");
+    const badge = document.getElementById("notif-count");
+    if (badge) {
+      const count = _notifications.filter((n) => n.level === "high").length;
+      if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = "flex";
+      }
+    }
+    renderNotificationsPanel();
+  } catch (err) {
+    console.error("Notifications failed:", err);
+  }
+}
+
+function renderNotificationsPanel() {
+  const list = document.getElementById("notif-panel-list");
+  if (!list) return;
+  if (!_notifications.length) {
+    list.innerHTML = '<div class="notif-empty">No notifications.</div>';
+    return;
+  }
+  list.innerHTML = _notifications.map((n) => `
+    <div class="notif-item" onclick="handleNotifClick('${escapeHtml(n.link_page || "")}','${escapeHtml(n.resource_id || n.site_id || "")}')">
+      <div class="notif-dot ${n.level}"></div>
+      <div style="flex:1;min-width:0">
+        <div class="notif-title">${escapeHtml(n.title)}</div>
+        <div class="notif-msg">${escapeHtml(n.message)}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function handleNotifClick(page, id) {
+  const panel = document.getElementById("notifications-panel");
+  if (panel) panel.style.display = "none";
+  if (page && id) loadPage(page, id);
+  else if (page) loadPage(page);
+}
+window.handleNotifClick = handleNotifClick;
+
+// ── Global Search ───────────────────────────────────────────────────────────
+function setupGlobalSearch() {
+  const input = document.getElementById("global-search");
+  if (!input) return;
+  let searchTimeout;
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    const q = input.value.trim();
+    if (q.length < 2) {
+      document.getElementById("global-search-results").style.display = "none";
+      return;
+    }
+    searchTimeout = setTimeout(() => performSearch(q), 300);
+  });
+  input.addEventListener("focus", () => {
+    if (input.value.trim().length >= 2) performSearch(input.value.trim());
+  });
+  input.addEventListener("click", (e) => e.stopPropagation());
+}
+
+async function performSearch(q) {
+  try {
+    const data = await get(`/api/search?q=${encodeURIComponent(q)}`);
+    renderSearchResults(data, q);
+  } catch (err) {
+    console.error("Search failed:", err);
+  }
+}
+
+function renderSearchResults(data, q) {
+  const container = document.getElementById("global-search-results");
+  if (!container) return;
+  const categories = [
+    { key: "sites", label: "Sites", page: "site-detail" },
+    { key: "deviations", label: "Deviations", page: "deviation-detail" },
+    { key: "capas", label: "CAPA Records", page: "capa-detail" },
+    { key: "patients", label: "Patients", page: null },
+    { key: "rules", label: "Protocol Rules", page: null },
+  ];
+  let html = "";
+  let total = 0;
+  for (const cat of categories) {
+    const items = data[cat.key] || [];
+    if (!items.length) continue;
+    total += items.length;
+    html += `<div class="search-category">${cat.label}</div>`;
+    html += items.map((item) => `
+      <div class="search-result-item" onclick="handleSearchClick('${cat.page || ""}','${escapeHtml(String(item.id))}')">
+        <div style="flex:1;min-width:0">
+          <div class="search-result-label">${escapeHtml(item.label)}</div>
+          ${item.sublabel ? `<div class="search-result-sub">${escapeHtml(item.sublabel)}</div>` : ""}
+        </div>
+        <span class="search-result-type">${cat.key.slice(0, -1)}</span>
+      </div>
+    `).join("");
+  }
+  if (!total) {
+    html = `<div class="search-no-results">No results found for "${escapeHtml(q)}"</div>`;
+  }
+  container.innerHTML = html;
+  container.style.display = "block";
+}
+
+function handleSearchClick(page, id) {
+  const input = document.getElementById("global-search");
+  if (input) input.value = "";
+  const results = document.getElementById("global-search-results");
+  if (results) results.style.display = "none";
+  if (page) loadPage(page, id);
+}
+window.handleSearchClick = handleSearchClick;
+
+// ── Investigate Site With Bob ───────────────────────────────────────────────
+async function investigateSiteWithBob(siteId) {
+  loadPage("bob");
+  await new Promise((r) => setTimeout(r, 200));
+
+  const messages = document.getElementById("bob-messages");
+
+  messages.insertAdjacentHTML("beforeend", `
+    <div class="bob-message bot-message">
+      <div class="bot-avatar">B</div>
+      <div class="message-content">
+        <div class="investigate-panel" id="invest-panel-${siteId}">
+          <div class="investigate-header">🔍 Investigating Site ${siteId}</div>
+          <div class="investigate-steps" id="invest-steps-${siteId}">
+            ${["Retrieve current risk", "Analyze risk drivers", "Retrieve recent deviations", "Analyze trend", "Identify leading indicators", "Recommend actions"].map((s, i) => `
+              <div class="investigate-step pending" id="invest-step-${siteId}-${i}">
+                <span class="step-icon">○</span>
+                <span class="step-text">${s}</span>
+                <span class="step-status">Pending</span>
+              </div>
+            `).join("")}
+          </div>
+          <div class="investigate-result" id="invest-result-${siteId}" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  `);
+  messages.scrollTop = messages.scrollHeight;
+
+  const setStep = (i, state, status) => {
+    const step = document.getElementById(`invest-step-${siteId}-${i}`);
+    if (!step) return;
+    step.className = `investigate-step ${state}`;
+    step.querySelector(".step-icon").textContent = state === "done" ? "✓" : state === "active" ? "◉" : "○";
+    step.querySelector(".step-status").textContent = status;
+  };
+
+  try {
+    setStep(0, "active", "Running...");
+    const riskResult = await post("/api/bob/ask", { question: `What is the current risk for Site ${siteId}?` });
+    setStep(0, "done", "Done");
+
+    setStep(1, "active", "Running...");
+    const explainResult = await post("/api/bob/ask", { question: `Why is Site ${siteId} high risk?` });
+    setStep(1, "done", "Done");
+
+    setStep(2, "active", "Running...");
+    await post("/api/bob/ask", { question: `Show major deviations at Site ${siteId}` });
+    setStep(2, "done", "Done");
+
+    setStep(3, "active", "Running...");
+    await post("/api/bob/ask", { question: `Show trend for Site ${siteId}` });
+    setStep(3, "done", "Done");
+
+    setStep(4, "active", "Running...");
+    await new Promise((r) => setTimeout(r, 300));
+    setStep(4, "done", "Done");
+
+    setStep(5, "active", "Running...");
+    await post("/api/bob/ask", { question: `Recommend actions for Site ${siteId}` });
+    setStep(5, "done", "Done");
+
+    const resultEl = document.getElementById(`invest-result-${siteId}`);
+    if (resultEl) {
+      resultEl.style.display = "block";
+      resultEl.innerHTML = `
+        <h4 style="margin-bottom:12px">Investigation Complete — Site ${siteId}</h4>
+        <p style="white-space:pre-line;font-size:13px">${escapeHtml(explainResult.answer || "")}</p>
+        <div style="margin-top:10px">
+          <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${siteId}')">View Site Detail</button>
+          <button class="btn btn-sm btn-secondary" onclick="openCapaModalForSite('${siteId}')">Generate CAPA</button>
+        </div>
+      `;
+    }
+    messages.scrollTop = messages.scrollHeight;
+  } catch (err) {
+    const resultEl = document.getElementById(`invest-result-${siteId}`);
+    if (resultEl) {
+      resultEl.style.display = "block";
+      resultEl.innerHTML = `<div style="color:var(--risk-high)">Investigation failed: ${escapeHtml(err.message || "Unknown error")}</div>`;
+    }
+  }
+}
+window.investigateSiteWithBob = investigateSiteWithBob;
+
+
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 // If token exists, try to auto-login by checking session
 (async function init() {
@@ -1151,3 +1743,79 @@ function escapeHtml(str) {
   document.getElementById("login-screen").style.display = "flex";
   document.getElementById("app").style.display = "none";
 })();
+
+// ── Protocol Patient Compare ────────────────────────────────────────────────
+function showPatientCompare(ruleId, ruleName, ruleExpected) {
+  const container = document.getElementById(`patient-compare-${ruleId}`);
+  if (!container) return;
+
+  // Toggle if already open with input
+  if (container.style.display !== "none") {
+    container.style.display = "none";
+    return;
+  }
+
+  container.style.display = "block";
+  container.innerHTML = `
+    <div class="patient-compare-panel">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em">PATIENT COMPLIANCE CHECK — ${escapeHtml(ruleName)}</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="text" id="pc-input-${ruleId}" class="search-input" placeholder="Patient ID (e.g. P-037-019)" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="runPatientCompare('${ruleId}','${escapeHtml(ruleExpected)}')">Check</button>
+      </div>
+      <div id="pc-result-${ruleId}"></div>
+    </div>
+  `;
+}
+window.showPatientCompare = showPatientCompare;
+
+async function runPatientCompare(ruleId, ruleExpected) {
+  const input = document.getElementById(`pc-input-${ruleId}`);
+  const resultEl = document.getElementById(`pc-result-${ruleId}`);
+  if (!input || !resultEl) return;
+  const patientId = input.value.trim();
+  if (!patientId) { resultEl.innerHTML = `<div style="color:var(--risk-high);font-size:12px">Please enter a patient ID.</div>`; return; }
+  resultEl.innerHTML = `<div class="loading-cell" style="padding:8px;font-size:12px"><span class="spinner"></span> Checking...</div>`;
+  try {
+    const result = await post("/api/bob/tool", { tool_name: "compare_patient_to_protocol", params: { patient_id: patientId } });
+    const compliant = result.compliant;
+    const issues = result.issues || [];
+    resultEl.innerHTML = `
+      <div class="compare-result-row">
+        <span class="compare-label">Patient:</span>
+        <span class="compare-val">${escapeHtml(patientId)}</span>
+      </div>
+      <div class="compare-result-row">
+        <span class="compare-label">Expected:</span>
+        <span class="compare-val">${escapeHtml(ruleExpected)}</span>
+      </div>
+      <div class="compare-result-row">
+        <span class="compare-label">Result:</span>
+        <span class="${compliant ? 'compare-status-compliant' : 'compare-status-non-compliant'}">${compliant ? '✓ COMPLIANT' : '✗ NON-COMPLIANT'}</span>
+      </div>
+      ${issues.length ? `<div style="margin-top:8px">${issues.map(i => `
+        <div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">
+          <span style="color:var(--risk-high);font-weight:600">${escapeHtml(i.rule)}</span>: ${escapeHtml(i.finding)}
+          <span class="badge badge-${(i.severity||'').toLowerCase()}" style="margin-left:6px">${i.severity}</span>
+        </div>`).join('')}</div>` : ''}
+      <div style="margin-top:10px;display:flex;gap:6px">
+        ${!compliant ? `<button class="btn btn-sm btn-ghost" onclick="loadPage('bob');setTimeout(()=>askBob('Check patient ${escapeHtml(patientId)} against protocol'),200)">Ask Bob</button>` : ''}
+        <button class="btn btn-sm btn-ghost" onclick="loadPage('deviations')">View Deviations</button>
+      </div>
+    `;
+  } catch (err) {
+    resultEl.innerHTML = `<div style="color:var(--risk-high);font-size:12px">Error: ${escapeHtml(err.message || 'Check failed')}</div>`;
+  }
+}
+window.runPatientCompare = runPatientCompare;
+
+// ── CAPA Approval Workflow ──────────────────────────────────────────────────
+function openCapaApprovalModal(capaId, currentStatus) {
+  const canApprove = ["STUDY_MANAGER", "SYSTEM_ADMIN"].includes(_session?.role);
+  if (!canApprove) { alert("Only Study Managers and Admins can approve or reject CAPAs."); return; }
+  document.getElementById("capa-update-id").value = capaId;
+  document.getElementById("capa-new-status").value = currentStatus;
+  document.getElementById("capa-status-modal").style.display = "flex";
+}
+window.openCapaApprovalModal = openCapaApprovalModal;
+

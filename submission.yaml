@@ -17,15 +17,20 @@ submission:
   problem_statement: >
     Clinical trial operations teams can see yesterday's deviations but cannot identify which site is becoming tomorrow's problem. Fragmented protocol rules, deviation records, and monitoring history make it difficult to prove why risk is rising or choose an intervention with confidence.
   solution_summary: >
-    TrialGuard AI monitors 42 synthetic clinical sites, evaluates all 8 protocol rules across patient and visit data using a deterministic deviation engine (producing ~975 deviations across 7 types), classifies severity using a transparent 6-factor scoring model, and calculates a multi-factor site risk score with leading indicators and predictive trend. IBM Bob connects to TrialGuard through a real MCP server (src/mcp_server.py, mcp[cli] v2.2) that exposes all 13 tool contracts via STDIO transport. IBM Bob can invoke the tools using natural language, retrieving real MongoDB-backed data with RBAC enforced.
+    TrialGuard AI is a polished clinical-trial risk intelligence platform. It monitors 42 synthetic clinical sites, evaluates all 8 protocol rules using a deterministic deviation engine (~975 deviations, 7 types), classifies severity via transparent 6-factor scoring, and calculates multi-factor site risk scores with leading indicators, predictive trend, and natural score variation. The dashboard features a TrialGuard Risk Indicator, "What Needs Your Attention" panel, Early Warning Center, and a 42-cell Site Risk Heatmap. IBM Bob connects through a real MCP server (src/mcp_server.py, mcp[cli] v2.2, STDIO) exposing 13 tools with RBAC. The web app uses a clearly-labelled "TrialGuard Demo Assistant" (NOT IBM Bob) that routes questions through the same 13 tool contracts. Random/general chat input never triggers clinical tool calls.
   key_features:
     - "Deterministic rule-based deviation detection across 8 protocol rules and 7 deviation types"
     - "Transparent 6-factor severity classification (MAJOR/MINOR/ADMINISTRATIVE) with per-factor breakdown"
-    - "Multi-factor site risk engine with leading indicators, 6-period sparkline, and predictive scoring"
+    - "Multi-factor site risk engine with leading indicators, 6-period sparkline, predictive scoring, and natural variation"
+    - "Clinical Command Center Dashboard: TrialGuard Risk Indicator, What Needs Your Attention, Early Warning Center, Site Risk Heatmap"
     - "Real IBM Bob MCP integration: src/mcp_server.py exposes 13 tools via STDIO; configured in .bob/mcp.json; RBAC enforced"
-    - "Evidence-linked CAPA generation with deviation-type-specific corrective and preventive actions"
+    - "TrialGuard Demo Assistant (clearly NOT IBM Bob): routes web chat through same 13 tool contracts with evidence panel"
+    - "Bob Investigation Mode: step-by-step 6-call investigation workflow with visual progress tracking"
+    - "CAPA Workflow Tracker with Approve/Reject (role-gated); AI root-cause labelled as requiring qualified review"
+    - "Protocol Patient Compare: direct eligibility compliance check from Protocol Analysis page"
+    - "Global Search across sites, patients, deviations, CAPAs, and protocol rules with RBAC filtering"
+    - "Notification Center from real application data; Filterable Audit Trail; Recent Reports tracker"
     - "Server-side RBAC (4 roles), audit trail, MongoDB + in-memory fallback, full enterprise SPA"
-    - "52 MCP integration tests covering tool discovery, real invocations, RBAC, and error handling"
   tech_stack:
     languages: ["Python", "JavaScript", "HTML", "CSS"]
     frameworks: ["Python standard-library HTTP server (no external web framework)", "MCP Python SDK v2.2 (mcp[cli])"]

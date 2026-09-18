@@ -15,25 +15,29 @@ class MemoryRepository:
         self.state = state
 
     def all(self, collection: str) -> list[dict[str, Any]]:
-        return deepcopy(getattr(self.state, collection))
+        # Shallow list copy — callers must not mutate individual dicts in place.
+        # Use deepcopy only when a caller needs a fully independent copy.
+        return list(getattr(self.state, collection))
 
     def find_one(self, collection: str, field: str, value: Any) -> dict[str, Any] | None:
-        return next((item for item in self.all(collection) if item.get(field) == value), None)
+        return next((item for item in getattr(self.state, collection) if item.get(field) == value), None)
 
     def find_many(self, collection: str, field: str | None = None, value: Any = None) -> list[dict[str, Any]]:
-        items = self.all(collection)
-        return [item for item in items if field is None or item.get(field) == value]
+        items = getattr(self.state, collection)
+        if field is None:
+            return list(items)
+        return [item for item in items if item.get(field) == value]
 
     def insert(self, collection: str, item: dict[str, Any]) -> dict[str, Any]:
-        getattr(self.state, collection).append(deepcopy(item))
-        return deepcopy(item)
+        getattr(self.state, collection).append(item)
+        return item
 
     def update(self, collection: str, field: str, value: Any, changes: dict[str, Any]) -> dict[str, Any] | None:
         items = getattr(self.state, collection)
         for item in items:
             if item.get(field) == value:
-                item.update(deepcopy(changes))
-                return deepcopy(item)
+                item.update(changes)
+                return item
         return None
 
 

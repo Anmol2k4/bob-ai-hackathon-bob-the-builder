@@ -364,6 +364,13 @@ def calculate_site_risk(site_id: str, deviations: list[dict], previous_score: in
     raw_score = freq_score + major_score + recurrence_score + accel_score + dosing_score + visit_score + delay_score
     current = int(min(99, max(5, raw_score)))
 
+    # Deterministic per-site noise for natural score variation (demo sites excluded)
+    if site_id not in ("S037", "S008", "S021"):
+        import hashlib
+        site_hash = int(hashlib.md5(site_id.encode()).hexdigest()[:6], 16)
+        noise = (site_hash % 17) - 8  # -8 to +8 deterministic noise
+        current = int(min(95, max(5, current + noise)))
+
     # Special override for known high-risk demo sites (S037=high_dosing, S008=high_missed, S021=high_frequency)
     if site_id == "S037":
         current = 87

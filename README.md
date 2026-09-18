@@ -63,13 +63,19 @@ CAPA generation
 |---|---|
 | **Deviation Detection** | Rule-based engine evaluates all 8 protocol rules (R-001–R-008); detects 7 deviation types |
 | **Severity Classification** | Transparent 6-factor prototype scoring (safety, data integrity, criticality, rights, magnitude, recurrence) |
-| **Site Risk Engine** | Multi-factor score (0–100) with leading indicators, trend, and 6-period sparkline |
+| **Site Risk Engine** | Multi-factor score (0–100) with leading indicators, trend, and 6-period sparkline; deterministic with natural variation |
 | **Predictive Risk** | Projected score for next monitoring period with worsening/improving/stable trend |
-| **IBM Bob Integration** | 13 MCP-ready tool contracts exposed as real MCP server (`src/mcp_server.py`); IBM Bob configured via `.bob/mcp.json`; RBAC enforced |
-| **CAPA Generation** | Evidence-backed problem statement, AI-generated root-cause hypothesis, corrective/preventive actions |
-| **RBAC** | 4 roles; server-side enforcement; site coordinator restricted to assigned site |
-| **Audit Trail** | All actions logged; login, site access, Bob queries, CAPA events |
-| **Reports** | Trial summary, site risk, deviations, CAPA — all printable HTML |
+| **Clinical Command Center Dashboard** | TrialGuard Risk Indicator · "What Needs Your Attention" panel · Early Warning Center · Site Risk Heatmap |
+| **IBM Bob Integration** | 13 MCP-ready tool contracts exposed as real MCP server (`src/mcp_server.py`); IBM Bob configured via `.bob/mcp.json`; RBAC enforced; STDIO transport |
+| **TrialGuard Demo Assistant** | Local web demo adapter (NOT IBM Bob) that calls the same 13 tool contracts; clearly labelled |
+| **Bob Investigation Mode** | Step-by-step site investigation showing Retrieve → Analyze → Trend → Recommend → CAPA |
+| **CAPA Workflow** | Evidence-backed CAPA with visual workflow tracker; Approve/Reject (role-gated); AI root-cause clearly labelled |
+| **Protocol Patient Compare** | Compare any patient against protocol eligibility rules directly from the Protocol Analysis page |
+| **Global Search** | Search across sites, patients, deviations, CAPAs, and protocol rules with RBAC filtering |
+| **Notification Center** | Real-time notifications from application data (worsening risk, CAPA due, major deviations) |
+| **Audit Trail** | All actions logged with filterable view (action, user, free text); Bob/MCP activity visible |
+| **Reports** | Trial summary, site risk, deviations, CAPA — all printable HTML with recent reports tracker |
+| **RBAC** | 4 roles; server-side enforcement; site coordinator restricted to assigned site; SITE_COORDINATOR cannot access cross-site data |
 
 ---
 
@@ -136,19 +142,24 @@ python src/server.py
 
 ## Demo Flow (3–5 minutes)
 
-1. Log in as **manager@trialguard.demo**
-2. Dashboard: 42 sites · 1128 patients · 975 deviations · 16 high-risk sites
-3. High-Risk Sites table → click **Investigate** on **S037**
-4. Site detail: Risk Score **87/100** · Level **HIGH** · Trend **WORSENING**
-5. Leading indicators: Repeated dosing deviations · Increasing missed visits · Data-entry delays
-6. Open a `INCORRECT_DOSE` deviation: Expected **100 mg** → Actual **150 mg**
-7. Click **Ask IBM Bob** → ask: *"Why is Site S037 high risk?"*
-8. Bob answers with evidence from the database (risk score, drivers, deviation counts)
-9. Ask: *"Is this an isolated problem or a trend?"* → Bob confirms WORSENING trajectory
-10. Ask: *"What should we do?"* → corrective and preventive actions
-11. Ask: *"Generate a CAPA for Site S037"* → CAPA-0001 with problem statement, root cause, actions
-12. Navigate to **Audit Trail** → all events logged
-13. Navigate to **Reports** → generate Site Risk Report for S037
+**DETECT → PREDICT → EXPLAIN → ACT → AUDIT**
+
+1. Log in as **manager@trialguard.demo** (STUDY_MANAGER)
+2. **Dashboard** — see TrialGuard Risk Indicator, "What Needs Your Attention" (S037 highlighted), Early Warning Center, Site Risk Heatmap (42 coloured cells)
+3. Dashboard heatmap: click **S037** (red) → Site detail opens
+4. **Site S037**: Risk Score **87/100** · Level **HIGH** · Trend **WORSENING** · Predicted **99/100**
+5. Leading indicators visible: Repeated dosing deviations · Increasing missed visits · Data-entry delays
+6. Click **🔍 Investigate with Bob** → step-by-step investigation panel runs 6 tool calls in sequence
+7. Expand **Investigation Evidence** on any Bob response to see tool used and data source
+8. Open a `INCORRECT_DOSE` deviation: Expected **100 mg** → Actual **150 mg** · MAJOR severity
+9. Evidence panel: Rule R-003 · Protocol TG-101 · Severity score 14/25 · recurrence flag
+10. Navigate to **Protocol Analysis** → click **Compare Patient** on Rule R-003 → enter `P-037-019`
+11. See NON-COMPLIANT result with MAJOR severity violation
+12. Navigate to **CAPA Management** → open CAPA-0001 → see full workflow tracker
+13. As Study Manager: click **✓ Approve CAPA** → status updates immediately
+14. **Audit Trail**: filter by BOB_QUESTION → see all Bob queries logged; filter by GENERATE_CAPA
+15. **Reports** → generate Site Risk Report for S037 → appears in Recent Reports list
+16. Ask in Bob chat: *"hello"* → gets capability/unsupported response (not S037 risk data)
 
 ---
 

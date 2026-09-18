@@ -31,11 +31,12 @@ TrialGuard tool implementations
 MongoDB / in-memory repository
 ```
 
-**What it is:** A deterministic keyword-routing adapter for web demo purposes. It classifies
-user intent into one of 13 TrialGuard categories or returns an UNSUPPORTED response. It is clearly
-labelled "DEMO BOB ADAPTER (not IBM Bob)" in all responses.
+**What it is:** A deterministic keyword-routing adapter for web demo purposes (`LocalDemoBobProvider`). It classifies
+user intent into one of 13 TrialGuard categories or returns an UNSUPPORTED response.
 
-**What it is not:** It is not IBM Bob. It does not use LLM reasoning. It does not use the MCP protocol.
+The web adapter is presented in the UI as **"TrialGuard Demo Assistant"** with the label **"LOCAL DEMO ADAPTER — NOT IBM BOB"**. The `MCPBobProvider` wrapper used by the server delegates to this adapter.
+
+**What it is not:** It is not IBM Bob. It does not use LLM reasoning. It does not use the MCP protocol over the network. Random/general input such as "hello", "test", "abc", "how are you?" always returns the UNSUPPORTED response — no tool is called.
 
 ### Intent Categories (Local Demo Adapter)
 

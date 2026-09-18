@@ -240,7 +240,7 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
         rules = protocol.get("rules", [])
         if query:
             q = query.lower()
-            rules = [r for r in rules if q in r.get("name", "").lower() or q in r.get("domain", "").lower()]
+            rules = [r for r in rules if q in r.get("rule_id", "").lower() or q in r.get("name", "").lower() or q in r.get("domain", "").lower() or q in r.get("description", "").lower()]
         return {"protocol_id": protocol.get("protocol_id"), "rules": rules, "sources": ["Protocol repository"]}
 
     def compare_patient_to_protocol(patient_id: str, **_) -> dict:
@@ -485,6 +485,7 @@ class LocalDemoBobProvider:
         "who are you", "what is your name", "your name",
         "thanks", "thank you", "cheers", "bye", "goodbye",
         "help me with", "help", "random",
+        "test", "abc",
     ]
 
     _UNSUPPORTED_RESPONSE = (
@@ -676,7 +677,19 @@ class LocalDemoBobProvider:
             elif tool_name == "get_capa_status":
                 result = fn(site_id=target_site) if target_site else fn()
             elif tool_name == "search_protocol_rules":
-                result = fn(query=question)
+                # Extract a specific rule ID (e.g. R-001) if present; otherwise pass
+                # a keyword from the question so the filter is narrowly scoped.
+                rule_id_match = re.search(r'\bR-\d+\b', question, re.IGNORECASE)
+                if rule_id_match:
+                    query_str = rule_id_match.group(0).upper()
+                else:
+                    # Strip common filler words and use what remains as the keyword
+                    filler = re.compile(
+                        r'\b(what|is|the|protocol|rule|tell|me|about|describe|show|rules|for|a|an)\b',
+                        re.IGNORECASE,
+                    )
+                    query_str = filler.sub("", question).strip()
+                result = fn(query=query_str)
             elif tool_name == "compare_patient_to_protocol":
                 # patient_id must be in the message — extract P-XXXXX pattern
                 patient_matches = re.findall(r'\bP-?\d+\b', question, re.IGNORECASE)
@@ -917,6 +930,62 @@ class LocalDemoBobProvider:
                 f"Use the Reports section to download a full formatted report."
             )
 
+        elif tool_name == "search_protocol_rules":
+            rules = result.get("rules", [])
+            pid = result.get("protocol_id", "TG-101")
+            if not rules:
+                return f"No matching protocol rules found in {pid}."
+            lines = [f"Protocol {pid} — {len(rules)} rule(s) found:\n"]
+            for r in rules:
+                lines.append(
+                    f"Rule {r.get('rule_id', '?')} — {r.get('name', '')}\n"
+                    f"  Domain: {r.get('domain', '')}\n"
+                    f"  Requirement: {r.get('expected', '')}\n"
+                    f"  Description: {r.get('description', '')}\n"
+                    f"  Severity if violated: {r.get('severity_if_violated', '?')}\n"
+                )
+            return "\n".join(lines)
+
+        elif tool_name == "list_site_deviations":
+            devs = result.get("deviations", [])
+            count = result.get("count", len(devs))
+            sid = result.get("site_id", site_id)
+            if not devs:
+                return f"No deviations found for Site {sid}."
+            lines = [f"Site {sid} — {count} deviation(s):\n"]
+            for d in devs[:10]:
+                lines.append(
+                    f"• [{d.get('severity', '?')}] {d.get('deviation_type', '?').replace('_', ' ').title()} "
+                    f"(ID: {d.get('deviation_id', '?')}) — detected {d.get('detection_date', '?')}"
+                )
+            if count > 10:
+                lines.append(f"… and {count - 10} more. Use the Deviations page for the full list.")
+            return "\n".join(lines)
+
+        elif tool_name == "get_deviation":
+            dev_id = result.get("deviation_id", "?")
+            return (
+                f"Deviation {dev_id}\n\n"
+                f"Site: {result.get('site_id', '?')}\n"
+                f"Type: {result.get('deviation_type', '?').replace('_', ' ').title()}\n"
+                f"Severity: {result.get('severity', '?')}\n"
+                f"Detected: {result.get('detection_date', '?')}\n"
+                f"Description: {result.get('description', result.get('evidence', ''))}"
+            )
+
+        elif tool_name == "compare_patient_to_protocol":
+            pid = result.get("patient_id", "?")
+            compliant = result.get("compliant", True)
+            issues = result.get("issues", [])
+            if compliant:
+                return f"Patient {pid} is compliant with protocol TG-101 eligibility criteria. No violations found."
+            lines = [f"Patient {pid} has {len(issues)} protocol violation(s):\n"]
+            for issue in issues:
+                lines.append(
+                    f"• Rule {issue.get('rule', '?')} [{issue.get('severity', '?')}]: {issue.get('finding', '')}"
+                )
+            return "\n".join(lines)
+
         return "I have retrieved the requested information from the trial database."
 
 
@@ -937,19 +1006,18 @@ class MCPBobProvider:
             → TrialGuard tool
             → MongoDB
     """
-    name = "IBM Bob (MCP)"
+    name = "TrialGuard Demo Assistant"
 
     # Intent → tool mapping (same rules as the MCP tool descriptions)
     # Uses the same _INTENT_RULES + _classify_intent logic from LocalDemoBobProvider
-    # by delegating to it — we inherit the intent layer, replace the provider name/badge.
+    # by delegating to it — we inherit the intent layer, keep each provider's own name.
 
     def __init__(self, repo: Any, sess: dict):
         self._repo = repo
         self._sess = sess
         self._tools = build_bob_tools(repo, sess)
-        # Reuse LocalDemoBobProvider's intent classifier — it's good, just rename badge
+        # Reuse LocalDemoBobProvider's intent classifier; do NOT overwrite its name
         self._delegate = LocalDemoBobProvider()
-        self._delegate.name = self.name   # update badge
 
     def answer(self, question: str, user: User, tools: dict[str, Callable]) -> dict:
         """
@@ -967,6 +1035,5 @@ class MCPBobProvider:
 
         # Delegate to LocalDemoBobProvider's answer() which has the full intent
         # classification, RBAC downgrade, site-scope guard, and _compose_answer.
-        # The provider name badge is already updated to "IBM Bob (MCP)".
         result = self._delegate.answer(question, user, scoped_tools)
         return result

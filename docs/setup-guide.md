@@ -116,9 +116,11 @@ Output:
 
 TrialGuard now exposes a **real MCP server** for IBM Bob integration, in addition to the existing local demo adapter.
 
-### Option A — Web Demo (existing, always works)
+### Option A — Web Demo (always works, does NOT require IBM Bob)
 
-The app ships with a local Demo Bob Adapter. It calls the same 13 MCP-ready tool contracts that a real IBM Bob MCP endpoint uses.
+The app ships with a **TrialGuard Demo Assistant** — a local adapter clearly labelled in the UI as `LOCAL DEMO ADAPTER — NOT IBM BOB`. It calls the same 13 MCP-ready tool contracts that a real IBM Bob MCP endpoint uses. Results are grounded in the application database — no hallucination.
+
+**The web chat assistant is NOT IBM Bob.** Do not misrepresent the Demo Assistant as IBM Bob when presenting the application.
 
 ### Option B — Real IBM Bob MCP Integration (IMPLEMENTED)
 
