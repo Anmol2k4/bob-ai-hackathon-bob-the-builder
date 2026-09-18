@@ -588,7 +588,13 @@ class Handler(BaseHTTPRequestHandler):
 
         from collections import Counter
 
-        # Build acceleration: current - previous from history
+        # Pre-group deviations by site once — never call find_many in a loop
+        all_devs = _repo.all("deviations")
+        devs_by_site: dict[str, list] = {}
+        for d in all_devs:
+            devs_by_site.setdefault(d.get("site_id", ""), []).append(d)
+
+        # Pre-group history by site
         site_history_map: dict[str, list] = {}
         for h in all_history:
             sid = h.get("site_id")
@@ -611,10 +617,10 @@ class Handler(BaseHTTPRequestHandler):
             r = risk_by_site.get(sid, {})
             s = site_map.get(sid, {})
 
-            # Primary signal
-            devs = _repo.find_many("deviations", "site_id", sid)
-            if devs:
-                type_counts = Counter(d["type"] for d in devs)
+            # Primary signal — use pre-grouped deviations
+            site_devs = devs_by_site.get(sid, [])
+            if site_devs:
+                type_counts = Counter(d["type"] for d in site_devs)
                 dominant_type = max(type_counts, key=type_counts.get)
                 dom_count = type_counts[dominant_type]
                 if dom_count > 2:

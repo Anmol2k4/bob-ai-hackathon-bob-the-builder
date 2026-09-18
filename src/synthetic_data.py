@@ -30,8 +30,8 @@ def build_demo_state() -> RepositoryState:
     state.visits = _build_visits(state.patients, rng)
     state.medications = _build_medications(state.patients, rng)
     state.deviations = _build_deviations(state.sites, state.patients, state.visits, state.medications, rng)
-    state.risk_scores = _build_risk_scores(state.sites, state.deviations)
     state.risk_history = _build_risk_history(state.sites, state.deviations)
+    state.risk_scores = _build_risk_scores(state.sites, state.deviations, risk_history=state.risk_history)
     state.capa_records = _build_capa_records(state.sites, state.deviations)
     state.audit_events = _build_audit_events(state.users)
     return state
@@ -405,13 +405,11 @@ def _add_recurrence_flags(deviations: list[dict]) -> None:
 
 # ─── risk scores ─────────────────────────────────────────────────────────────
 
-def _build_risk_scores(sites: list[dict], deviations: list[dict]) -> list[dict]:
+def _build_risk_scores(sites: list[dict], deviations: list[dict], risk_history: list[dict] | None = None) -> list[dict]:
     from engines import calculate_site_risk
     scores = []
-    # First build history to use for slope prediction (requires no mutual dependency)
-    history = _build_risk_history(sites, deviations)
     for site in sites:
-        risk = calculate_site_risk(site["site_id"], deviations, previous_score=0, risk_history=history)
+        risk = calculate_site_risk(site["site_id"], deviations, previous_score=0, risk_history=risk_history)
         risk["calculated_at"] = "2026-05-18"
         scores.append(risk)
     return scores

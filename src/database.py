@@ -46,7 +46,9 @@ class MongoRepository(MemoryRepository):
         super().__init__()
         self.backend = "mongodb"
         from pymongo import MongoClient
-        self.client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=800)
+        # 5 000 ms — enough for MongoDB Atlas (~150-300 ms RTT) while still
+        # failing fast for a genuinely absent local server
+        self.client = MongoClient(settings.mongodb_uri, serverSelectionTimeoutMS=5000)
         self.database = self.client[settings.mongodb_database]
         self.client.admin.command("ping")
 
