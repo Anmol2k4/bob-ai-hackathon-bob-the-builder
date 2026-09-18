@@ -312,7 +312,12 @@ def _make_deviation(
 
 # ─── site risk engine ─────────────────────────────────────────────────────────
 
-def calculate_site_risk(site_id: str, deviations: list[dict], previous_score: int = 0) -> dict:
+def calculate_site_risk(
+    site_id: str,
+    deviations: list[dict],
+    previous_score: int = 0,
+    risk_history: list[dict] | None = None,
+) -> dict:
     """
     Calculate a multi-factor site risk score using leading indicators.
 
@@ -327,6 +332,7 @@ def calculate_site_risk(site_id: str, deviations: list[dict], previous_score: in
     8. Protocol compliance percentage
 
     Returns score 0–100, risk_level, trend, leading_indicators, risk_drivers.
+    risk_history: optional list of {site_id, period, risk_score} snapshots for slope-based prediction.
     """
     site_devs = [d for d in deviations if d["site_id"] == site_id]
 
@@ -414,10 +420,37 @@ def calculate_site_risk(site_id: str, deviations: list[dict], previous_score: in
         leading_indicators = ["Elevated overall deviation frequency"]
 
     sparkline = _build_sparkline(current, trend)
-    predicted = min(99, current + (13 if trend == "WORSENING" else (2 if trend == "STABLE" else -5)))
+
+    # Slope-based prediction: use last 3 snapshots from risk_history if available
+    predicted = _slope_prediction(site_id, current, trend, risk_history)
 
     return _build_risk_result(site_id, current, previous_score, leading_indicators, risk_drivers, sparkline,
                                predicted=predicted, trend=trend)
+
+
+def _slope_prediction(
+    site_id: str,
+    current: int,
+    trend: str,
+    risk_history: list[dict] | None,
+) -> int:
+    """
+    Calculate predicted risk score using slope from last 3 history snapshots.
+    Falls back to fixed offsets if no history is available.
+    """
+    if risk_history:
+        site_snaps = sorted(
+            [h for h in risk_history if h.get("site_id") == site_id],
+            key=lambda h: h.get("period", ""),
+        )
+        if len(site_snaps) >= 3:
+            last3 = site_snaps[-3:]
+            scores = [s["risk_score"] for s in last3]
+            # Average slope across the 3 periods
+            slope = (scores[-1] - scores[0]) / 2
+            return int(min(99, max(0, current + slope)))
+    # Fallback: fixed offsets per trend
+    return int(min(99, current + (13 if trend == "WORSENING" else (2 if trend == "STABLE" else -5))))
 
 
 def _build_risk_result(

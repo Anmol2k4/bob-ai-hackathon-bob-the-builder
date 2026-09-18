@@ -95,6 +95,24 @@ TOOL_REGISTRY = {
         "output_schema": {"type": "object"},
         "roles": ["STUDY_MANAGER", "AUDITOR", "SYSTEM_ADMIN"],
     },
+    "get_site_risk_history": {
+        "description": "Return stored monthly risk score snapshots (6 periods) for a site.",
+        "input_schema": {"type": "object", "properties": {"site_id": {"type": "string"}}, "required": ["site_id"]},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
+    "analyze_deviation_pattern": {
+        "description": "Analyze recurring deviation patterns at a site: recurrence, affected patients, cross-patient spread.",
+        "input_schema": {"type": "object", "properties": {"site_id": {"type": "string"}}, "required": ["site_id"]},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
+    "get_affected_patients": {
+        "description": "Return patients affected by a specific deviation type at a site.",
+        "input_schema": {"type": "object", "properties": {"site_id": {"type": "string"}, "deviation_type": {"type": "string"}}, "required": ["site_id", "deviation_type"]},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
 }
 
 
@@ -249,16 +267,113 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
         if not patient:
             raise ValueError(f"Patient {patient_id} not found")
         _check_site_scope(patient["site_id"])
+        site_id = patient["site_id"]
         issues = []
+        rules_checked = []
+
+        # R-001: Age eligibility
+        rules_checked.append("R-001")
         age = patient.get("age", 30)
         if not (18 <= age <= 65):
             issues.append({"rule": "R-001", "finding": f"Age {age} outside 18–65 window", "severity": "MAJOR"})
+
+        # Load patient visits and medications for further checks
+        all_visits = repo.find_many("visits", "patient_id", patient_id)
+        all_meds = repo.find_many("medications", "patient_id", patient_id)
+        all_site_devs = repo.find_many("deviations", "site_id", site_id)
+        patient_devs = [d for d in all_site_devs if d.get("patient_id") == patient_id]
+
+        # R-003: Dosing — check visits for incorrect doses
+        rules_checked.append("R-003")
+        for v in all_visits:
+            if v.get("dose_actual") and v.get("dose_expected") and v["dose_actual"] != v["dose_expected"]:
+                issues.append({
+                    "rule": "R-003",
+                    "finding": f"Incorrect dose at visit {v.get('visit_number', '?')}: expected {v['dose_expected']}mg, got {v['dose_actual']}mg",
+                    "severity": "MAJOR",
+                })
+
+        # R-004: Prohibited medications
+        rules_checked.append("R-004")
+        prohibited_names = {"Drug X", "Drug Y"}
+        for med in all_meds:
+            if med.get("medication_name") in prohibited_names:
+                issues.append({
+                    "rule": "R-004",
+                    "finding": f"Prohibited medication: {med['medication_name']}",
+                    "severity": "MAJOR",
+                })
+
+        # R-005: Missing assessments — check visits
+        rules_checked.append("R-005")
+        for v in all_visits:
+            if v.get("assessment_status") == "MISSING":
+                issues.append({
+                    "rule": "R-005",
+                    "finding": f"Missing safety assessment at visit {v.get('visit_number', '?')} on {v.get('actual_date', '?')}",
+                    "severity": "MAJOR",
+                })
+
+        # R-006: Late data entry
+        rules_checked.append("R-006")
+        from datetime import datetime as _dt
+        for v in all_visits:
+            try:
+                vd = _dt.strptime(v["actual_date"], "%Y-%m-%d").date()
+                ed = _dt.strptime(v["data_entry_date"], "%Y-%m-%d").date()
+                delay = (ed - vd).days
+                if delay > 2:
+                    issues.append({
+                        "rule": "R-006",
+                        "finding": f"Data entered {delay} days after visit {v.get('visit_number', '?')} (limit: 2 days)",
+                        "severity": "ADMINISTRATIVE",
+                    })
+            except (KeyError, ValueError, TypeError):
+                pass
+
+        # R-002 / R-007: Visit windows (visit 2 = Day 7 ± 2, visit 3 = Day 14 ± 2)
+        rules_checked.extend(["R-002", "R-007"])
+        window_rules = {2: ("R-002", 7, 2), 3: ("R-007", 14, 2)}
+        from datetime import date as _date
+        enroll = _date(2026, 1, 15)
+        for v in all_visits:
+            vnum = v.get("visit_number")
+            if vnum in window_rules:
+                rule_id, day_offset, tolerance = window_rules[vnum]
+                try:
+                    actual = _dt.strptime(v["actual_date"], "%Y-%m-%d").date()
+                    scheduled = enroll + __import__("datetime").timedelta(days=day_offset)
+                    diff = abs((actual - scheduled).days)
+                    if diff > tolerance:
+                        issues.append({
+                            "rule": rule_id,
+                            "finding": f"Visit {vnum} occurred {diff} days outside ±{tolerance}-day window",
+                            "severity": "MINOR",
+                        })
+                except (KeyError, ValueError, TypeError):
+                    pass
+
+        # R-008: Missed visits — all 5 visits should exist
+        rules_checked.append("R-008")
+        recorded_visits = {v.get("visit_number") for v in all_visits}
+        for vnum in range(1, 6):
+            if vnum not in recorded_visits:
+                issues.append({
+                    "rule": "R-008",
+                    "finding": f"Visit {vnum} not recorded for patient",
+                    "severity": "MINOR",
+                })
+
+        passed = len(rules_checked) - len({i["rule"] for i in issues})
         return {
             "patient_id": patient_id,
-            "site_id": patient["site_id"],
+            "site_id": site_id,
+            "rules_checked": rules_checked,
             "issues": issues,
+            "passed": max(0, passed),
+            "failed": len({i["rule"] for i in issues}),
             "compliant": len(issues) == 0,
-            "sources": ["Patient repository", "Protocol TG-101"],
+            "sources": ["Patient repository", "Visit repository", "Medication repository", "Protocol TG-101"],
         }
 
     def get_site_trends(site_id: str, **_) -> dict:
@@ -340,6 +455,44 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
             "disclaimer": "Synthetic data. Not for clinical or regulatory use.",
         }
 
+    def get_site_risk_history(site_id: str, **_) -> dict:
+        _check_role(TOOL_REGISTRY["get_site_risk_history"]["roles"])
+        _check_site_scope(site_id)
+        history = [h for h in repo.all("risk_history") if h.get("site_id") == site_id]
+        history.sort(key=lambda h: h.get("period", ""))
+        return {
+            "site_id": site_id,
+            "history": history,
+            "period_count": len(history),
+            "sources": ["Risk history repository"],
+        }
+
+    def analyze_deviation_pattern(site_id: str, **_) -> dict:
+        _check_role(TOOL_REGISTRY["analyze_deviation_pattern"]["roles"])
+        _check_site_scope(site_id)
+        devs = repo.find_many("deviations", "site_id", site_id)
+        patients = repo.find_many("patients", "site_id", site_id)
+        from services import analyze_deviation_pattern as _svc_pattern
+        result = _svc_pattern(site_id, devs, patients)
+        return {**result, "sources": ["Deviation repository"]}
+
+    def get_affected_patients(site_id: str, deviation_type: str, **_) -> dict:
+        _check_role(TOOL_REGISTRY["get_affected_patients"]["roles"])
+        _check_site_scope(site_id)
+        devs = repo.find_many("deviations", "site_id", site_id)
+        matching = [d for d in devs if d.get("type") == deviation_type]
+        patient_ids = list({d.get("patient_id") for d in matching if d.get("patient_id")})
+        patients = [repo.find_one("patients", "patient_id", pid) for pid in patient_ids]
+        patients = [p for p in patients if p]
+        return {
+            "site_id": site_id,
+            "deviation_type": deviation_type,
+            "affected_patient_count": len(patient_ids),
+            "deviation_count": len(matching),
+            "patients": [{"patient_id": p["patient_id"], "age": p.get("age"), "status": p.get("status")} for p in patients],
+            "sources": ["Deviation repository", "Patient repository"],
+        }
+
     return {
         "get_trial_overview": get_trial_overview,
         "list_high_risk_sites": list_high_risk_sites,
@@ -354,6 +507,9 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
         "generate_capa": generate_capa,
         "get_capa_status": get_capa_status,
         "generate_risk_report": generate_risk_report,
+        "get_site_risk_history": get_site_risk_history,
+        "analyze_deviation_pattern": analyze_deviation_pattern,
+        "get_affected_patients": get_affected_patients,
     }
 
 
@@ -475,6 +631,27 @@ class LocalDemoBobProvider:
             "context": ["patient"],
             "trigger": ["check", "compare", "eligible", "eligibility", "compliant", "compliance", "violation", "meets criteria"],
         },
+        # RISK HISTORY: must mention site/risk/history + history/trend/over time/periods
+        {
+            "intent": "RISK_HISTORY",
+            "tool": "get_site_risk_history",
+            "context": ["site", "risk", "s0"],
+            "trigger": ["history", "historical", "over time", "periods", "snapshots", "past scores", "trend history"],
+        },
+        # DEVIATION PATTERN: must mention site/deviation/pattern + pattern/recurring/recurrence
+        {
+            "intent": "DEVIATION_PATTERN",
+            "tool": "analyze_deviation_pattern",
+            "context": ["site", "deviation", "pattern", "s0"],
+            "trigger": ["pattern", "recurring", "recurrence", "repeat", "same type", "how often", "frequency", "spread"],
+        },
+        # AFFECTED PATIENTS: must mention patient/site + affected/impacted/which patients
+        {
+            "intent": "AFFECTED_PATIENTS",
+            "tool": "get_affected_patients",
+            "context": ["patient", "patients", "deviation", "site"],
+            "trigger": ["affected", "impacted", "which patients", "who", "involved patients", "patients with", "patient list"],
+        },
     ]
 
     # Phrases that are clear non-clinical / greeting signals
@@ -534,7 +711,7 @@ class LocalDemoBobProvider:
             if has_site and rule["intent"] in (
                 "SITE_RISK", "SITE_RISK_EXPLANATION", "SITE_TRENDS",
                 "SITE_ACTIONS", "SITE_DEVIATIONS", "CAPA_GENERATION",
-                "RISK_REPORT",
+                "RISK_REPORT", "RISK_HISTORY", "DEVIATION_PATTERN", "AFFECTED_PATIENTS",
             ):
                 context_match = context_match or True
             if context_match and trigger_match:
@@ -642,7 +819,7 @@ class LocalDemoBobProvider:
         _site_scoped = {
             "get_site_risk", "explain_site_risk", "list_site_deviations",
             "get_site_trends", "recommend_site_actions", "generate_capa",
-            "generate_risk_report",
+            "generate_risk_report", "get_site_risk_history", "analyze_deviation_pattern",
         }
         if tool_name in _site_scoped and not target_site:
             return {
@@ -702,6 +879,23 @@ class LocalDemoBobProvider:
                         "tool_used": tool_name,
                     }
                 result = fn(patient_id=patient_matches[0])
+            elif tool_name == "get_affected_patients":
+                # Need site_id + deviation_type: try to extract type from question
+                dev_types = ["INCORRECT_DOSE", "MISSED_VISIT", "PROHIBITED_MEDICATION",
+                             "MISSING_ASSESSMENT", "LATE_DATA_ENTRY", "VISIT_OUTSIDE_WINDOW",
+                             "ELIGIBILITY_VIOLATION"]
+                found_type = None
+                for dt in dev_types:
+                    if dt.lower().replace("_", " ") in lowered or dt.lower() in lowered:
+                        found_type = dt
+                        break
+                if not found_type and "dose" in lowered:
+                    found_type = "INCORRECT_DOSE"
+                elif not found_type and ("missed" in lowered or "visit" in lowered):
+                    found_type = "MISSED_VISIT"
+                elif not found_type:
+                    found_type = "INCORRECT_DOSE"  # default
+                result = fn(site_id=target_site, deviation_type=found_type) if target_site else fn(site_id="S037", deviation_type=found_type)
             else:
                 result = fn(site_id=target_site) if target_site else fn()
 
@@ -955,8 +1149,8 @@ class LocalDemoBobProvider:
             lines = [f"Site {sid} — {count} deviation(s):\n"]
             for d in devs[:10]:
                 lines.append(
-                    f"• [{d.get('severity', '?')}] {d.get('deviation_type', '?').replace('_', ' ').title()} "
-                    f"(ID: {d.get('deviation_id', '?')}) — detected {d.get('detection_date', '?')}"
+                    f"• [{d.get('severity', '?')}] {d.get('type', '?').replace('_', ' ').title()} "
+                    f"(ID: {d.get('deviation_id', '?')}) — detected {d.get('detected_at', '?')}"
                 )
             if count > 10:
                 lines.append(f"… and {count - 10} more. Use the Deviations page for the full list.")
@@ -967,9 +1161,9 @@ class LocalDemoBobProvider:
             return (
                 f"Deviation {dev_id}\n\n"
                 f"Site: {result.get('site_id', '?')}\n"
-                f"Type: {result.get('deviation_type', '?').replace('_', ' ').title()}\n"
+                f"Type: {result.get('type', '?').replace('_', ' ').title()}\n"
                 f"Severity: {result.get('severity', '?')}\n"
-                f"Detected: {result.get('detection_date', '?')}\n"
+                f"Detected: {result.get('detected_at', '?')}\n"
                 f"Description: {result.get('description', result.get('evidence', ''))}"
             )
 
@@ -977,13 +1171,75 @@ class LocalDemoBobProvider:
             pid = result.get("patient_id", "?")
             compliant = result.get("compliant", True)
             issues = result.get("issues", [])
+            rules_checked = result.get("rules_checked", [])
+            passed = result.get("passed", 0)
+            failed = result.get("failed", 0)
             if compliant:
-                return f"Patient {pid} is compliant with protocol TG-101 eligibility criteria. No violations found."
-            lines = [f"Patient {pid} has {len(issues)} protocol violation(s):\n"]
+                return (
+                    f"Patient {pid} is compliant with all {len(rules_checked)} applicable protocol TG-101 rules. "
+                    f"Rules checked: {', '.join(rules_checked)}. No violations found."
+                )
+            lines = [
+                f"Patient {pid} has {len(issues)} protocol violation(s) across {failed} rule(s) "
+                f"(checked {len(rules_checked)} rules, passed {passed}):\n"
+            ]
             for issue in issues:
                 lines.append(
                     f"• Rule {issue.get('rule', '?')} [{issue.get('severity', '?')}]: {issue.get('finding', '')}"
                 )
+            return "\n".join(lines)
+
+        elif tool_name == "get_site_risk_history":
+            history = result.get("history", [])
+            sid = result.get("site_id", site_id)
+            if not history:
+                return f"No risk history data found for Site {sid}."
+            lines = [f"Site {sid} risk history ({len(history)} periods):\n"]
+            for h in history:
+                lines.append(f"  {h.get('period', '?')}: Risk score {h.get('risk_score', '?')}/100 "
+                             f"(deviations: {h.get('deviation_count', '?')}, major: {h.get('major_count', '?')})")
+            if len(history) >= 2:
+                first = history[0]["risk_score"]
+                last = history[-1]["risk_score"]
+                delta = last - first
+                arrow = "↑" if delta > 0 else ("↓" if delta < 0 else "→")
+                lines.append(f"\nOverall change: {arrow} {abs(delta)} points over {len(history)} periods.")
+            return "\n".join(lines)
+
+        elif tool_name == "analyze_deviation_pattern":
+            sid = result.get("site_id", site_id)
+            patterns = result.get("patterns", [])
+            recurring = result.get("recurring_types", [])
+            most = result.get("most_concerning")
+            if not patterns:
+                return f"No deviation pattern data found for Site {sid}."
+            lines = [f"Deviation pattern analysis for Site {sid}:\n"]
+            for p in patterns[:6]:
+                status = "⚠ RECURRING" if p.get("is_recurring") else "ISOLATED"
+                lines.append(
+                    f"  • {p['deviation_type'].replace('_', ' ').title()}: {p['occurrences']} occurrences, "
+                    f"{p['unique_patient_count']} patient(s) — {status}"
+                )
+            if recurring:
+                lines.append(f"\nRecurring deviation types: {', '.join(t.replace('_', ' ').title() for t in recurring)}")
+            if most:
+                lines.append(f"Most concerning: {most.replace('_', ' ').title()}")
+            return "\n".join(lines)
+
+        elif tool_name == "get_affected_patients":
+            sid = result.get("site_id", site_id)
+            dev_type = result.get("deviation_type", "?")
+            count = result.get("affected_patient_count", 0)
+            dev_count = result.get("deviation_count", 0)
+            patients = result.get("patients", [])
+            if not patients:
+                return f"No patients affected by {dev_type.replace('_', ' ').title()} deviations at Site {sid}."
+            lines = [
+                f"Site {sid} — {dev_type.replace('_', ' ').title()} deviations:\n"
+                f"{dev_count} deviation(s) affecting {count} patient(s).\n"
+            ]
+            for p in patients[:10]:
+                lines.append(f"  • {p['patient_id']} (age {p.get('age', '?')}, {p.get('status', '?')})")
             return "\n".join(lines)
 
         return "I have retrieved the requested information from the trial database."

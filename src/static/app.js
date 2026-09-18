@@ -185,6 +185,7 @@ async function loadDashboard() {
       loadProtocolCompliance(),
       loadDashboardAttention(),
       loadSiteHeatmap(),
+      loadEmergingSites(),
     ]);
     // Show notification badge
     if (summary.high_risk_sites > 0) {
@@ -481,14 +482,15 @@ function applyFilters() {
   renderSitesTable(filtered);
 }
 
-// ── Site Detail ────────────────────────────────────────────────────────────
+// ── Site Investigation Workspace ───────────────────────────────────────────
 async function loadSiteDetail(siteId) {
   if (!siteId) return;
-  const [site, risk, devs, patients] = await Promise.all([
+  const [site, risk, devs, patients, investigation] = await Promise.all([
     get(`/api/sites/${siteId}`),
     get(`/api/sites/${siteId}/risk`),
     get(`/api/sites/${siteId}/deviations`),
     get(`/api/sites/${siteId}/patients`).catch(() => []),
+    get(`/api/sites/${siteId}/investigation`).catch(() => null),
   ]);
 
   document.getElementById("site-detail-header").innerHTML = `
@@ -601,6 +603,106 @@ async function loadSiteDetail(siteId) {
         </table>
       </div>
     </div>
+
+    <!-- Investigation Workspace (P0-3) -->
+    ${investigation ? `
+    <div class="data-panel" style="margin-top:20px">
+      <div class="panel-header">
+        <h3>🔍 Investigation Workspace</h3>
+        ${investigation.primary_signal ? `<span class="indicator-chip" style="background:var(--risk-high);color:#fff">${escapeHtml(investigation.primary_signal)}</span>` : ""}
+      </div>
+
+      <!-- Risk Driver Breakdown -->
+      ${(investigation.risk_driver_breakdown || []).length ? `
+      <div style="margin-bottom:20px">
+        <div class="site-indicators-label" style="margin-bottom:8px">Risk Driver Breakdown</div>
+        <div class="risk-driver-bars">
+          ${investigation.risk_driver_breakdown.map(r => `
+            <div class="driver-row">
+              <span class="driver-label">${escapeHtml(r.factor)}</span>
+              <div class="driver-bar-wrap">
+                <div class="driver-bar" style="width:${r.pct}%;background:${r.pct > 30 ? 'var(--risk-high)' : r.pct > 15 ? 'var(--risk-medium)' : 'var(--risk-low)'}"></div>
+              </div>
+              <span class="driver-pct">${r.pct}%</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+      ` : ""}
+
+      <!-- Risk History Sparkline -->
+      ${(investigation.risk_history || []).length >= 2 ? `
+      <div style="margin-bottom:20px">
+        <div class="site-indicators-label" style="margin-bottom:8px">6-Period Risk Trajectory</div>
+        <div style="display:flex;align-items:flex-end;gap:4px;height:50px">
+          ${investigation.risk_history.map((h, i, arr) => {
+            const maxScore = Math.max(...arr.map(x => x.risk_score));
+            const pct = Math.round((h.risk_score / maxScore) * 100);
+            const color = h.risk_score >= 65 ? 'var(--risk-high)' : h.risk_score >= 35 ? 'var(--risk-medium)' : 'var(--risk-low)';
+            return `<div title="${h.period}: ${h.risk_score}/100" style="flex:1;background:${color};height:${pct}%;min-height:4px;border-radius:2px 2px 0 0"></div>`;
+          }).join("")}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-top:2px">
+          <span>${investigation.risk_history[0].period}</span>
+          <span>${investigation.risk_history[investigation.risk_history.length - 1].period}</span>
+        </div>
+        ${investigation.risk_history.length >= 2 ? (() => {
+          const first = investigation.risk_history[0].risk_score;
+          const last = investigation.risk_history[investigation.risk_history.length - 1].risk_score;
+          const delta = last - first;
+          return `<div style="font-size:12px;color:${delta > 0 ? 'var(--risk-high)' : delta < 0 ? 'var(--risk-low)' : 'var(--text-muted)'};margin-top:4px">
+            ${delta > 0 ? '↑' : delta < 0 ? '↓' : '→'} ${delta > 0 ? '+' : ''}${delta} points over ${investigation.risk_history.length} periods
+          </div>`;
+        })() : ""}
+      </div>
+      ` : ""}
+
+      <!-- Recurrence Analysis -->
+      ${(investigation.recurrence?.patterns || []).length ? `
+      <div style="margin-bottom:20px">
+        <div class="site-indicators-label" style="margin-bottom:8px">Recurrence Analysis</div>
+        <div style="font-size:12px">
+          ${investigation.recurrence.patterns.slice(0, 5).map(p => `
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;padding:6px;background:var(--surface);border-radius:4px">
+              <span style="font-weight:600;min-width:160px">${escapeHtml(p.deviation_type.replace(/_/g, ' '))}</span>
+              <span>${p.occurrences} occurrences · ${p.unique_patient_count} patient(s)</span>
+              <span class="badge ${p.is_recurring ? 'badge-major' : 'badge-minor'}">${p.is_recurring ? '⚠ RECURRING' : 'ISOLATED'}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+      ` : ""}
+
+      <!-- Protocol Rules Violated -->
+      ${(investigation.protocol_rules_violated || []).length ? `
+      <div style="margin-bottom:20px">
+        <div class="site-indicators-label" style="margin-bottom:6px">Protocol Rules Violated</div>
+        <div class="indicator-list">
+          ${investigation.protocol_rules_violated.map(r => `<span class="indicator-chip" style="background:var(--risk-high);color:#fff">${escapeHtml(r)}</span>`).join("")}
+        </div>
+      </div>
+      ` : ""}
+
+      <!-- CAPA Status -->
+      ${investigation.capa?.exists ? `
+      <div style="margin-bottom:20px">
+        <div class="site-indicators-label" style="margin-bottom:6px">CAPA Record</div>
+        <div style="font-size:13px">
+          <span class="badge badge-${investigation.capa.status}">${escapeHtml(investigation.capa.status)}</span>
+          &nbsp;
+          <button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${investigation.capa.capa_id}')">${escapeHtml(investigation.capa.capa_id)}</button>
+        </div>
+      </div>
+      ` : ""}
+
+      <!-- Recommendation -->
+      ${investigation.recommendation_summary ? `
+      <div style="padding:10px;background:var(--surface);border-left:3px solid var(--accent);border-radius:0 4px 4px 0;font-size:13px">
+        <strong>Recommendation:</strong> ${escapeHtml(investigation.recommendation_summary)}
+      </div>
+      ` : ""}
+    </div>
+    ` : ""}
 
     <div class="disclaimer-box">⚠ Risk scores are calculated using a prototype multi-factor framework. Predicted scores are estimates, not guaranteed outcomes. All data is synthetic.</div>
   `;
@@ -824,6 +926,47 @@ async function loadDeviationDetail(devId) {
           </div>
         </div>
       </div>
+
+      <!-- Evidence Chain (P0-6) -->
+      ${(dev.protocol_rule || dev.risk_contribution !== undefined || (dev.related_deviations || []).length) ? `
+      <div class="data-panel" style="margin-top:20px">
+        <div class="panel-header"><h3>Evidence Chain</h3></div>
+        <div class="evidence-chain" style="font-size:12px;padding:12px;background:var(--surface);border-radius:6px;font-family:monospace;line-height:2">
+          ${dev.protocol_rule ? `<span class="ec-node ec-rule">Protocol ${dev.evidence?.protocol_id || 'TG-101'} Rule ${dev.evidence?.rule_id || '?'}</span> <span class="ec-arrow">→</span> ` : ""}
+          <span class="ec-node ec-expected">Expected: ${escapeHtml(dev.expected || '—')}</span> <span class="ec-arrow">→</span>
+          <span class="ec-node ec-patient">Patient ${dev.patient_id}</span> <span class="ec-arrow">→</span>
+          <span class="ec-node ec-actual">Actual: ${escapeHtml(dev.actual || '—')}</span> <span class="ec-arrow">→</span>
+          <span class="ec-node ec-deviation">${dev.deviation_id}</span> <span class="ec-arrow">→</span>
+          <span class="ec-node ec-severity badge badge-${(dev.severity || '').toLowerCase()}">${dev.severity}</span> <span class="ec-arrow">→</span>
+          <span class="ec-node ec-site">Site ${dev.site_id}</span>
+          ${dev.risk_contribution !== undefined ? ` <span class="ec-arrow">→</span> <span class="ec-node ec-risk">Risk contribution +${dev.risk_contribution}</span>` : ""}
+        </div>
+        ${dev.protocol_rule ? `
+        <div style="margin-top:12px;font-size:12px">
+          <strong>Protocol Rule ${dev.protocol_rule.rule_id}:</strong> ${escapeHtml(dev.protocol_rule.name || '')} —
+          <em>${escapeHtml(dev.protocol_rule.expected || '')}</em>
+        </div>
+        ` : ""}
+        ${(dev.related_deviations || []).length ? `
+        <div style="margin-top:12px">
+          <div class="detail-label" style="margin-bottom:6px">Related deviations of same type at this site (${dev.affected_patient_count || 0} patients affected)</div>
+          <div style="font-size:12px">
+            ${dev.related_deviations.map(r => `
+              <button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${escapeHtml(r.deviation_id)}')" style="margin:2px">
+                ${escapeHtml(r.deviation_id)} [${escapeHtml(r.severity || '?')}] ${escapeHtml(r.detected_at || '')}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+        ` : ""}
+        ${dev.capa_id ? `
+        <div style="margin-top:8px;font-size:12px">
+          <strong>CAPA:</strong>
+          <button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${escapeHtml(dev.capa_id)}')">${escapeHtml(dev.capa_id)}</button>
+        </div>
+        ` : ""}
+      </div>
+      ` : ""}
 
       <div class="disclaimer-box">⚠ Severity classification is a prototype framework. Not ICH/FDA/EMA guidance.</div>
     `;
@@ -1483,10 +1626,22 @@ async function loadDashboardAttention() {
       } else {
         ewItems.innerHTML = warnings.map((w) => {
           const indHtml = (w.leading_indicators || []).slice(0, 3).map((i) => `<span class="ew-indicator">${escapeHtml(i)}</span>`).join("");
+          const riskChangeHtml = w.risk_change !== undefined && w.risk_change !== 0
+            ? `<span style="color:${w.risk_change > 0 ? 'var(--risk-high)' : 'var(--risk-low)'}; font-size:11px; font-weight:600; margin-left:6px">
+                ${w.risk_change > 0 ? '↑' : '↓'}${Math.abs(w.risk_change)}pts
+               </span>`
+            : "";
+          const primarySignalHtml = w.primary_signal
+            ? `<div style="font-size:11px;font-weight:600;color:var(--risk-high);margin-bottom:3px">⚠ ${escapeHtml(w.primary_signal)}</div>`
+            : "";
+          const recentHtml = w.recent_deviation_count !== undefined
+            ? `<span class="ew-indicator">${w.recent_deviation_count} recent</span>`
+            : "";
           return `<div class="ew-item">
             <div class="ew-item-site">${w.site_id}</div>
-            <div class="ew-item-scores">Risk: ${w.current_score}/100 → Projected: ${w.predicted_score}/100</div>
-            <div class="ew-item-indicators">${indHtml}</div>
+            ${primarySignalHtml}
+            <div class="ew-item-scores">Risk: ${w.current_score}/100 → Projected: ${w.predicted_score}/100${riskChangeHtml}</div>
+            <div class="ew-item-indicators">${indHtml}${recentHtml}</div>
             <div class="ew-actions">
               <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${w.site_id}')">Investigate</button>
               <button class="btn btn-sm btn-secondary" onclick="loadPage('bob');setTimeout(()=>askBob('Why is Site ${w.site_id} high risk?'),200)">Ask Bob</button>
@@ -1519,6 +1674,50 @@ async function loadSiteHeatmap() {
     }).join("");
   } catch (err) {
     console.error("Heatmap failed:", err);
+  }
+}
+
+// ── Sites Becoming Risky (P0-8) ─────────────────────────────────────────────
+async function loadEmergingSites() {
+  try {
+    const data = await get("/api/dashboard/emerging-sites");
+    const container = document.getElementById("emerging-sites-container");
+    if (!container) return;
+    const sites = data.emerging_sites || [];
+    if (!sites.length) {
+      container.style.display = "none";
+      return;
+    }
+    container.style.display = "block";
+    container.innerHTML = `
+      <div class="data-panel">
+        <div class="panel-header">
+          <h3>🚨 Sites Becoming Risky</h3>
+          <span style="font-size:12px;color:var(--text-muted)">Top sites by risk acceleration this period</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead><tr>
+              <th>Site</th><th>Previous</th><th>Current</th><th>Change</th><th>Projected</th><th>Primary Signal</th><th>Action</th>
+            </tr></thead>
+            <tbody>
+              ${sites.map(s => `<tr>
+                <td><button class="btn btn-sm btn-ghost" onclick="loadPage('site-detail','${s.site_id}')">${s.site_id}</button></td>
+                <td>${s.previous_score}/100</td>
+                <td><strong style="color:${s.current_score >= 65 ? 'var(--risk-high)' : s.current_score >= 35 ? 'var(--risk-medium)' : 'var(--risk-low)'}">${s.current_score}/100</strong></td>
+                <td style="color:var(--risk-high);font-weight:600">↑ +${s.risk_change}</td>
+                <td>${s.projected_score}/100</td>
+                <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(s.primary_signal || '—')}</td>
+                <td><button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${s.site_id}')">Investigate</button></td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="disclaimer-box" style="margin-top:8px">⚠ Risk acceleration calculated from deterministic synthetic data. Not for clinical use.</div>
+      </div>
+    `;
+  } catch (err) {
+    console.error("Emerging sites failed:", err);
   }
 }
 

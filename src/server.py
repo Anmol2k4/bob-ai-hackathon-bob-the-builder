@@ -202,6 +202,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._dashboard_attention(sess)
             elif path == "/api/dashboard/heatmap" and method == "GET":
                 self._dashboard_heatmap(sess)
+            elif path == "/api/dashboard/emerging-sites" and method == "GET":
+                self._dashboard_emerging_sites(sess)
 
             # Protocol
             elif path == "/api/protocol" and method == "GET":
@@ -227,6 +229,15 @@ class Handler(BaseHTTPRequestHandler):
             elif re.match(r"^/api/sites/[^/]+/patients$", path) and method == "GET":
                 site_id = path.split("/")[-2]
                 self._get_site_patients(sess, site_id)
+            elif re.match(r"^/api/sites/[^/]+/risk-history$", path) and method == "GET":
+                site_id = path.split("/")[-2]
+                self._get_site_risk_history(sess, site_id)
+            elif re.match(r"^/api/sites/[^/]+/investigation$", path) and method == "GET":
+                site_id = path.split("/")[-2]
+                self._get_site_investigation(sess, site_id)
+            elif re.match(r"^/api/sites/[^/]+/pattern$", path) and method in ("GET", "POST"):
+                site_id = path.split("/")[-2]
+                self._get_site_pattern(sess, site_id)
 
             # Deviations
             elif path == "/api/deviations" and method == "GET":
@@ -457,15 +468,62 @@ class Handler(BaseHTTPRequestHandler):
         worsening = [r for r in risk_scores if r.get("trend") == "WORSENING"]
         worsening_sorted = sorted(worsening, key=lambda x: x.get("current_score", 0), reverse=True)
         from collections import Counter
+        from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+        all_history = _repo.all("risk_history")
         early_warnings = []
         for r in worsening_sorted[:3]:
-            site_devs = [d for d in deviations if d["site_id"] == r["site_id"]]
+            sid = r["site_id"]
+            site_devs = [d for d in deviations if d["site_id"] == sid]
             type_counts = dict(Counter(d["type"] for d in site_devs))
+
+            # Dominant deviation type → human-readable primary signal
+            if type_counts:
+                dominant_type = max(type_counts, key=type_counts.get)
+                type_label = dominant_type.replace("_", " ").title()
+                dom_count = type_counts[dominant_type]
+                # Check recurrence (>2 occurrences)
+                if dom_count > 2:
+                    primary_signal = f"Recurring {type_label.lower()} deviations ({dom_count})"
+                else:
+                    primary_signal = f"{type_label} ({dom_count})"
+            else:
+                primary_signal = "Elevated deviation frequency"
+
+            # Recent deviation count (last 30 days of data — use max date as reference)
+            all_dates = [d.get("detected_at") or "" for d in site_devs if d.get("detected_at")]
+            if all_dates:
+                max_date_str = max(all_dates)
+                try:
+                    max_date = _dt.strptime(max_date_str[:10], "%Y-%m-%d").date()
+                    cutoff = max_date - _td(days=30)
+                    recent_deviation_count = sum(
+                        1 for d in site_devs
+                        if d.get("detected_at") and d["detected_at"][:10] >= cutoff.isoformat()
+                    )
+                except (ValueError, TypeError):
+                    recent_deviation_count = len(site_devs)
+            else:
+                recent_deviation_count = len(site_devs)
+
+            # Risk change: current - previous score from history
+            site_history = sorted(
+                [h for h in all_history if h.get("site_id") == sid],
+                key=lambda h: h.get("period", "")
+            )
+            if len(site_history) >= 2:
+                risk_change = site_history[-1]["risk_score"] - site_history[-2]["risk_score"]
+            else:
+                risk_change = 0
+
             early_warnings.append({
-                "site_id": r["site_id"],
+                "site_id": sid,
                 "current_score": r.get("current_score", 0),
                 "predicted_score": r.get("predicted_score", r.get("current_score", 0)),
                 "deviation_type_breakdown": type_counts,
+                "primary_signal": primary_signal,
+                "recent_deviation_count": recent_deviation_count,
+                "risk_change": risk_change,
+                "leading_indicators": r.get("leading_indicators", []),
             })
 
         if high_risk:
@@ -512,6 +570,67 @@ class Handler(BaseHTTPRequestHandler):
         result.sort(key=lambda x: x["risk_score"], reverse=True)
         self._send_json(200, result)
 
+    def _dashboard_emerging_sites(self, sess: dict) -> None:
+        _audit(sess["user_id"], "VIEW_DASHBOARD_EMERGING", "dashboard")
+        all_history = _repo.all("risk_history")
+        risk_scores = _repo.all("risk_scores")
+        risk_by_site = {r["site_id"]: r for r in risk_scores}
+        sites = _repo.all("sites")
+        site_map = {s["site_id"]: s for s in sites}
+
+        from collections import Counter
+
+        # Build acceleration: current - previous from history
+        site_history_map: dict[str, list] = {}
+        for h in all_history:
+            sid = h.get("site_id")
+            if sid:
+                site_history_map.setdefault(sid, []).append(h)
+
+        emerging = []
+        for sid, hist in site_history_map.items():
+            if sess["role"] == "SITE_COORDINATOR" and sess.get("site_id") != sid:
+                continue
+            sorted_hist = sorted(hist, key=lambda h: h.get("period", ""))
+            if len(sorted_hist) < 2:
+                continue
+            previous_score = sorted_hist[-2]["risk_score"]
+            current_score = sorted_hist[-1]["risk_score"]
+            change = current_score - previous_score
+            if change <= 0:
+                continue  # only worsening sites
+
+            r = risk_by_site.get(sid, {})
+            s = site_map.get(sid, {})
+
+            # Primary signal
+            devs = _repo.find_many("deviations", "site_id", sid)
+            if devs:
+                type_counts = Counter(d["type"] for d in devs)
+                dominant_type = max(type_counts, key=type_counts.get)
+                dom_count = type_counts[dominant_type]
+                if dom_count > 2:
+                    primary_signal = f"Recurring {dominant_type.replace('_', ' ').lower()} deviations"
+                else:
+                    primary_signal = dominant_type.replace("_", " ").title()
+            else:
+                primary_signal = "Elevated deviation frequency"
+
+            emerging.append({
+                "site_id": sid,
+                "site_name": s.get("name", sid),
+                "previous_score": previous_score,
+                "current_score": current_score,
+                "risk_change": change,
+                "projected_score": r.get("predicted_score", current_score + change),
+                "trend": r.get("trend", "WORSENING"),
+                "risk_level": r.get("risk_level", "MEDIUM"),
+                "primary_signal": primary_signal,
+            })
+
+        emerging.sort(key=lambda x: -x["risk_change"])
+        self._send_json(200, {"emerging_sites": emerging[:5]})
+
 
     # ── protocol ──────────────────────────────────────────────────────────────
 
@@ -528,19 +647,54 @@ class Handler(BaseHTTPRequestHandler):
         protocols = _repo.all("protocols")
         protocol = protocols[0] if protocols else {}
         from collections import Counter
+
+        # Proper denominators per domain
+        patients = _repo.all("patients")
+        visits = _repo.all("visits")
+        total_patients = max(len(patients), 1)
+        total_visits = max(len(visits), 1)
+        # Expected visits = patients × 5 visits (for missed visit calc)
+        expected_visits = max(total_patients * 5, 1)
+        # Visit 2 and 3 are the windowed ones
+        windowed_visits = max(sum(1 for v in visits if v.get("visit_number") in (2, 3)), 1)
+
+        domain_denominators = {
+            "Eligibility": total_patients,
+            "Visit Schedule": windowed_visits,
+            "Dosing": total_visits,
+            "Concomitant Medications": total_patients,
+            "Assessments": total_visits,
+            "Data Integrity": total_visits,
+        }
+
         rule_violations = Counter(
             d["evidence"].get("rule_id", "unknown") for d in deviations if d.get("evidence")
         )
-        domains = {}
+        # Missed visits use expected_visits denominator
+        missed_violations = rule_violations.get("R-008", 0)
+
+        domains: dict[str, int] = {}
         for rule in protocol.get("rules", []):
             domain = rule["domain"]
             domains[domain] = domains.get(domain, 0) + rule_violations.get(rule["rule_id"], 0)
+
+        compliance_by_domain = []
+        for k, v in domains.items():
+            if k == "Visit Schedule":
+                # R-008 missed visits use expected_visits denominator
+                missed = rule_violations.get("R-008", 0)
+                windowed = v - missed
+                denom = windowed_visits + expected_visits
+                total_v = windowed + missed
+            else:
+                denom = domain_denominators.get(k, max(len(deviations), 1))
+                total_v = v
+            compliance_pct = max(0, round((1 - total_v / denom) * 100, 1))
+            compliance_by_domain.append({"domain": k, "violations": v, "denominator": denom, "compliance_pct": compliance_pct})
+
         self._send_json(200, {
             "protocol": protocol,
-            "compliance_by_domain": [
-                {"domain": k, "violations": v, "compliance_pct": max(0, round(100 - (v / max(len(deviations), 1)) * 100, 1))}
-                for k, v in domains.items()
-            ],
+            "compliance_by_domain": compliance_by_domain,
             "total_violations": len(deviations),
         })
 
@@ -620,6 +774,161 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "VIEW_SITE_PATIENTS", "patients", site_id)
         self._send_json(200, patients)
 
+    def _get_site_risk_history(self, sess: dict, site_id: str) -> None:
+        if not _site_scope(sess, site_id):
+            self._send_error(403, "Access to this site is not permitted")
+            return
+        if not _repo.find_one("sites", "site_id", site_id):
+            self._send_error(404, "Site not found")
+            return
+        _audit(sess["user_id"], "VIEW_SITE_RISK_HISTORY", "risk_history", site_id)
+        history = [h for h in _repo.all("risk_history") if h.get("site_id") == site_id]
+        history.sort(key=lambda h: h.get("period", ""))
+        self._send_json(200, {"site_id": site_id, "history": history})
+
+    def _get_site_investigation(self, sess: dict, site_id: str) -> None:
+        if not _site_scope(sess, site_id):
+            self._send_error(403, "Access to this site is not permitted")
+            return
+        site = _repo.find_one("sites", "site_id", site_id)
+        if not site:
+            self._send_error(404, "Site not found")
+            return
+        _audit(sess["user_id"], "VIEW_SITE_INVESTIGATION", "investigation", site_id)
+
+        risk = _repo.find_one("risk_scores", "site_id", site_id) or {}
+        devs = _repo.find_many("deviations", "site_id", site_id)
+        patients = _repo.find_many("patients", "site_id", site_id)
+        capas = [c for c in _repo.all("capa_records") if c["site_id"] == site_id]
+        history = sorted(
+            [h for h in _repo.all("risk_history") if h.get("site_id") == site_id],
+            key=lambda h: h.get("period", "")
+        )
+
+        from collections import Counter
+        from services import analyze_deviation_pattern
+        protocols = _repo.all("protocols")
+        protocol = protocols[0] if protocols else {}
+        rules_map = {r["rule_id"]: r for r in protocol.get("rules", [])}
+
+        # Deviation summary
+        sev_counts = Counter(d["severity"] for d in devs)
+        type_counts = Counter(d["type"] for d in devs)
+        by_type = dict(type_counts)
+
+        # Top 5 most recent major deviations
+        major_devs = sorted(
+            [d for d in devs if d["severity"] == "MAJOR"],
+            key=lambda d: d.get("detected_at", ""),
+            reverse=True,
+        )[:5]
+
+        # Affected patients
+        patient_dev_counts = Counter(d["patient_id"] for d in devs if d.get("patient_id"))
+        affected_patients = [
+            {"patient_id": pid, "deviation_count": cnt}
+            for pid, cnt in patient_dev_counts.most_common(10)
+        ]
+
+        # Risk driver breakdown
+        risk_drivers_raw = []
+        major_count = sev_counts.get("MAJOR", 0)
+        if major_count > 0:
+            risk_drivers_raw.append({"factor": "Major deviations", "points": major_count * 3})
+        dosing_errors = type_counts.get("INCORRECT_DOSE", 0)
+        if dosing_errors > 0:
+            risk_drivers_raw.append({"factor": "Dosing errors", "points": dosing_errors * 3})
+        missed_visits = type_counts.get("MISSED_VISIT", 0)
+        if missed_visits > 0:
+            risk_drivers_raw.append({"factor": "Missed visits", "points": missed_visits * 2})
+        data_delays = type_counts.get("LATE_DATA_ENTRY", 0)
+        if data_delays > 0:
+            risk_drivers_raw.append({"factor": "Data delays", "points": data_delays})
+        prohibited = type_counts.get("PROHIBITED_MEDICATION", 0)
+        if prohibited > 0:
+            risk_drivers_raw.append({"factor": "Prohibited medications", "points": prohibited * 3})
+        total_points = sum(r["points"] for r in risk_drivers_raw) or 1
+        for r in risk_drivers_raw:
+            r["pct"] = round(r["points"] / total_points * 100)
+
+        # Recurrence / pattern analysis
+        pattern_data = analyze_deviation_pattern(site_id, devs, patients)
+
+        # Protocol rules violated
+        rule_ids_violated = list({
+            d["evidence"].get("rule_id")
+            for d in devs
+            if d.get("evidence") and d["evidence"].get("rule_id")
+        })
+
+        # CAPA
+        capa_info = {"exists": False, "capa_id": None, "status": None}
+        if capas:
+            latest = sorted(capas, key=lambda c: c.get("created_at", ""), reverse=True)[0]
+            capa_info = {"exists": True, "capa_id": latest["capa_id"], "status": latest["status"]}
+
+        # Primary signal & recommendation
+        most_concerning = pattern_data.get("most_concerning")
+        if most_concerning:
+            primary_signal = most_concerning.replace("_", " ").title() + " (recurring)" if most_concerning in pattern_data.get("recurring_types", []) else most_concerning.replace("_", " ").title()
+        else:
+            primary_signal = "Elevated protocol deviation frequency"
+
+        risk_level = risk.get("risk_level", "MEDIUM")
+        if risk_level == "HIGH":
+            recommendation = "Immediate CAPA review recommended. Escalate to Study Manager."
+        elif risk_level == "MEDIUM":
+            recommendation = "Increased monitoring frequency recommended. Review deviation trends."
+        else:
+            recommendation = "Continue standard monitoring. No immediate intervention required."
+
+        self._send_json(200, {
+            "site_id": site_id,
+            "site": site,
+            "risk": {
+                "current_score": risk.get("current_score", 0),
+                "predicted_score": risk.get("predicted_score", 0),
+                "risk_level": risk_level,
+                "trend": risk.get("trend", "STABLE"),
+                "leading_indicators": risk.get("leading_indicators", []),
+                "risk_drivers": risk.get("risk_drivers", []),
+            },
+            "risk_history": history,
+            "risk_driver_breakdown": risk_drivers_raw,
+            "deviation_summary": {
+                "total": len(devs),
+                "major": sev_counts.get("MAJOR", 0),
+                "minor": sev_counts.get("MINOR", 0),
+                "admin": sev_counts.get("ADMINISTRATIVE", 0),
+                "by_type": by_type,
+            },
+            "top_deviations": major_devs,
+            "affected_patients": affected_patients,
+            "recurrence": {
+                "recurring_types": pattern_data.get("recurring_types", []),
+                "isolated_types": pattern_data.get("isolated_types", []),
+                "patterns": pattern_data.get("patterns", []),
+            },
+            "capa": capa_info,
+            "protocol_rules_violated": rule_ids_violated,
+            "primary_signal": primary_signal,
+            "recommendation_summary": recommendation,
+        })
+
+    def _get_site_pattern(self, sess: dict, site_id: str) -> None:
+        if not _site_scope(sess, site_id):
+            self._send_error(403, "Access to this site is not permitted")
+            return
+        if not _repo.find_one("sites", "site_id", site_id):
+            self._send_error(404, "Site not found")
+            return
+        _audit(sess["user_id"], "VIEW_SITE_PATTERN", "deviations", site_id)
+        devs = _repo.find_many("deviations", "site_id", site_id)
+        patients = _repo.find_many("patients", "site_id", site_id)
+        from services import analyze_deviation_pattern
+        result = analyze_deviation_pattern(site_id, devs, patients)
+        self._send_json(200, result)
+
     # ── deviations ────────────────────────────────────────────────────────────
 
     def _list_deviations(self, sess: dict, qs: dict) -> None:
@@ -650,7 +959,45 @@ class Handler(BaseHTTPRequestHandler):
             self._send_error(403, "Access not permitted")
             return
         _audit(sess["user_id"], "VIEW_DEVIATION", "deviation", dev_id)
-        self._send_json(200, dev)
+
+        # Enhance with evidence chain data
+        site_id = dev["site_id"]
+        dev_type = dev.get("type", "")
+        rule_id = (dev.get("evidence") or {}).get("rule_id")
+
+        # Protocol rule
+        protocols = _repo.all("protocols")
+        protocol = protocols[0] if protocols else {}
+        rules = protocol.get("rules", [])
+        protocol_rule = next((r for r in rules if r.get("rule_id") == rule_id), None)
+
+        # Related deviations of same type at same site
+        all_site_devs = _repo.find_many("deviations", "site_id", site_id)
+        related = [
+            {"deviation_id": d["deviation_id"], "patient_id": d.get("patient_id"), "detected_at": d.get("detected_at"), "severity": d.get("severity")}
+            for d in all_site_devs
+            if d["deviation_id"] != dev_id and d.get("type") == dev_type
+        ][:5]
+
+        # Affected patient count at site with same type
+        affected_patient_count = len({d.get("patient_id") for d in all_site_devs if d.get("type") == dev_type and d.get("patient_id")})
+
+        # Risk contribution estimate based on severity score
+        sev_score = dev.get("severity_score", 0)
+        risk_contribution = round(sev_score * 0.6)
+
+        # CAPA for this site
+        capas = [c for c in _repo.all("capa_records") if c["site_id"] == site_id]
+        capa_id = capas[0]["capa_id"] if capas else None
+
+        self._send_json(200, {
+            **dev,
+            "protocol_rule": protocol_rule,
+            "risk_contribution": risk_contribution,
+            "related_deviations": related,
+            "affected_patient_count": affected_patient_count,
+            "capa_id": capa_id,
+        })
 
     def _analyze_deviations(self, sess: dict) -> None:
         if sess["role"] not in ("STUDY_MANAGER", "SYSTEM_ADMIN"):

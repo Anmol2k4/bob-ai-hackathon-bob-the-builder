@@ -151,3 +151,85 @@ def _preventive_actions(deviation_type: str) -> list[str]:
         ],
     }.get(deviation_type, [])
     return specific + base
+
+
+def analyze_deviation_pattern(
+    site_id: str,
+    deviations: list[dict],
+    patients: list[dict] | None = None,
+) -> dict:
+    """
+    Analyze deviation patterns at a site: identify recurring types, affected patients,
+    and cross-patient spread.
+
+    Returns a structured pattern analysis suitable for investigation workspace and Bob responses.
+    """
+    site_devs = [d for d in deviations if d.get("site_id") == site_id]
+    if not site_devs:
+        return {
+            "site_id": site_id,
+            "patterns": [],
+            "recurring_types": [],
+            "isolated_types": [],
+            "most_concerning": None,
+        }
+
+    from collections import defaultdict
+    # Group by type
+    by_type: dict[str, list[dict]] = defaultdict(list)
+    for dev in site_devs:
+        dtype = dev.get("type", "UNKNOWN")
+        by_type[dtype].append(dev)
+
+    patterns = []
+    for dtype, devs in by_type.items():
+        affected_patients = list({d.get("patient_id") for d in devs if d.get("patient_id")})
+        unique_patient_count = len(affected_patients)
+        dates = sorted(
+            [d.get("detected_at") or d.get("created_at", "")
+             for d in devs if d.get("detected_at") or d.get("created_at")]
+        )
+        is_recurring = len(devs) > 2
+        cross_patient = unique_patient_count > 1
+        if is_recurring and cross_patient:
+            assessment = "RECURRING across multiple patients"
+        elif is_recurring:
+            assessment = "RECURRING — same patient"
+        elif cross_patient:
+            assessment = "ISOLATED across multiple patients"
+        else:
+            assessment = "ISOLATED"
+
+        patterns.append({
+            "deviation_type": dtype,
+            "occurrences": len(devs),
+            "affected_patients": affected_patients[:10],
+            "unique_patient_count": unique_patient_count,
+            "first_occurrence": dates[0] if dates else None,
+            "latest_occurrence": dates[-1] if dates else None,
+            "is_recurring": is_recurring,
+            "cross_patient": cross_patient,
+            "assessment": assessment,
+        })
+
+    # Sort by occurrences desc
+    patterns.sort(key=lambda p: (-p["occurrences"], p["deviation_type"]))
+
+    recurring_types = [p["deviation_type"] for p in patterns if p["is_recurring"]]
+    isolated_types = [p["deviation_type"] for p in patterns if not p["is_recurring"]]
+
+    # Most concerning = highest occurrences with MAJOR severity preference
+    major_types = {d.get("type") for d in site_devs if d.get("severity") == "MAJOR"}
+    concerning_patterns = [p for p in patterns if p["deviation_type"] in major_types]
+    most_concerning = (
+        concerning_patterns[0]["deviation_type"] if concerning_patterns
+        else (patterns[0]["deviation_type"] if patterns else None)
+    )
+
+    return {
+        "site_id": site_id,
+        "patterns": patterns,
+        "recurring_types": recurring_types,
+        "isolated_types": isolated_types,
+        "most_concerning": most_concerning,
+    }

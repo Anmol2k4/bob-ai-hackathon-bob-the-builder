@@ -27,6 +27,7 @@ class RepositoryState:
     risk_scores: list[dict[str, Any]] = field(default_factory=list)
     capa_records: list[dict[str, Any]] = field(default_factory=list)
     audit_events: list[dict[str, Any]] = field(default_factory=list)
+    risk_history: list[dict[str, Any]] = field(default_factory=list)
 
 
 COLLECTIONS = tuple(RepositoryState.__dataclass_fields__)

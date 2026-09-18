@@ -167,11 +167,11 @@ mcp = MCPServer(
     name="trialguard",
     title="TrialGuard AI — Clinical Trial Risk Monitor",
     description=(
-        "Exposes 13 TrialGuard tools for clinical trial risk monitoring, protocol deviation "
+        "Exposes 16 TrialGuard tools for clinical trial risk monitoring, protocol deviation "
         "detection, site risk assessment, CAPA generation, and evidence-backed investigation. "
         "All tools enforce RBAC and site-scope authorization. Data is synthetic demo data only."
     ),
-    version="1.0.0",
+    version="1.1.0",
 )
 
 
@@ -282,11 +282,29 @@ def generate_risk_report(site_id: str) -> str:
     return _safe_call("generate_risk_report", site_id=site_id)
 
 
+@mcp.tool(description="Return stored monthly risk score snapshots (6 periods) for a site.")
+def get_site_risk_history(site_id: str) -> str:
+    """Return historical risk score snapshots for a clinical trial site."""
+    return _safe_call("get_site_risk_history", site_id=site_id)
+
+
+@mcp.tool(description="Analyze recurring deviation patterns at a site: recurrence, affected patients, cross-patient spread.")
+def analyze_deviation_pattern(site_id: str) -> str:
+    """Analyze deviation patterns at a clinical trial site."""
+    return _safe_call("analyze_deviation_pattern", site_id=site_id)
+
+
+@mcp.tool(description="Return patients affected by a specific deviation type at a site.")
+def get_affected_patients(site_id: str, deviation_type: str) -> str:
+    """Return patients affected by a specific deviation type at a site."""
+    return _safe_call("get_affected_patients", site_id=site_id, deviation_type=deviation_type)
+
+
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     logger.info(
-        "Starting TrialGuard MCP server (13 tools) via STDIO transport. "
+        "Starting TrialGuard MCP server (16 tools) via STDIO transport. "
         "Role: %s | User: %s | Site scope: %s",
         _ROLE,
         _USER_ID,

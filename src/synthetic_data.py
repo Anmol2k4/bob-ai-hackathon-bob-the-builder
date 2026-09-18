@@ -31,6 +31,7 @@ def build_demo_state() -> RepositoryState:
     state.medications = _build_medications(state.patients, rng)
     state.deviations = _build_deviations(state.sites, state.patients, state.visits, state.medications, rng)
     state.risk_scores = _build_risk_scores(state.sites, state.deviations)
+    state.risk_history = _build_risk_history(state.sites, state.deviations)
     state.capa_records = _build_capa_records(state.sites, state.deviations)
     state.audit_events = _build_audit_events(state.users)
     return state
@@ -407,11 +408,74 @@ def _add_recurrence_flags(deviations: list[dict]) -> None:
 def _build_risk_scores(sites: list[dict], deviations: list[dict]) -> list[dict]:
     from engines import calculate_site_risk
     scores = []
+    # First build history to use for slope prediction (requires no mutual dependency)
+    history = _build_risk_history(sites, deviations)
     for site in sites:
-        risk = calculate_site_risk(site["site_id"], deviations, previous_score=0)
+        risk = calculate_site_risk(site["site_id"], deviations, previous_score=0, risk_history=history)
         risk["calculated_at"] = "2026-05-18"
         scores.append(risk)
     return scores
+
+
+# ─── risk history ─────────────────────────────────────────────────────────────
+
+# Fixed per-site trajectories for the 3 main demo sites (period: score)
+_DEMO_SITE_HISTORY = {
+    "S037": [61, 68, 74, 81, 87],   # worsening trajectory → current 87
+    "S008": [52, 58, 64, 70, 76],   # worsening trajectory → current 76
+    "S021": [48, 54, 60, 65, 71],   # worsening trajectory → current 71
+}
+_HISTORY_PERIODS = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"]
+
+
+def _build_risk_history(sites: list[dict], deviations: list[dict]) -> list[dict]:
+    """
+    Build deterministic 6-period monthly risk history snapshots (2026-04 through 2026-09)
+    for every site. Uses SEED-based hash for non-demo sites.
+    """
+    import hashlib
+    history = []
+    dev_by_site = {}
+    for d in deviations:
+        dev_by_site.setdefault(d["site_id"], []).append(d)
+
+    for site in sites:
+        sid = site["site_id"]
+        current_devs = dev_by_site.get(sid, [])
+        major_now = sum(1 for d in current_devs if d["severity"] == "MAJOR")
+
+        if sid in _DEMO_SITE_HISTORY:
+            score_seq = _DEMO_SITE_HISTORY[sid]
+        else:
+            # Deterministic base score from hash
+            site_hash = int(hashlib.md5((sid + "history").encode()).hexdigest()[:6], 16)
+            base = 10 + (site_hash % 45)  # base score 10-54
+            step = (site_hash % 7) - 3    # step -3 to +3 per period
+            score_seq = []
+            s = base
+            for _ in range(5):
+                score_seq.append(int(min(95, max(5, s))))
+                s += step
+
+        # Build 6 snapshots: 5 history + current period (2026-09)
+        all_scores = score_seq + [score_seq[-1] + (score_seq[-1] - score_seq[-2]) if len(score_seq) >= 2 else score_seq[-1]]
+        all_scores = [int(min(95, max(5, s))) for s in all_scores]
+
+        for i, period in enumerate(_HISTORY_PERIODS):
+            score = all_scores[i] if i < len(all_scores) else all_scores[-1]
+            # Approximate deviation counts from score (scaled down from current)
+            ratio = score / max(all_scores[-1], 1)
+            dev_count = max(0, int(len(current_devs) * ratio))
+            maj_count = max(0, int(major_now * ratio))
+            history.append({
+                "site_id": sid,
+                "period": period,
+                "risk_score": score,
+                "deviation_count": dev_count,
+                "major_count": maj_count,
+            })
+
+    return history
 
 
 # ─── capa records ─────────────────────────────────────────────────────────────
