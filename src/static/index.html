@@ -89,9 +89,21 @@
     <header class="topbar">
       <div class="topbar-left">
         <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
-        <div class="trial-info">
-          <span class="trial-label">Trial:</span>
-          <span class="trial-name">TG-101 · Phase II Safety Study</span>
+        <div class="trial-selector-group">
+          <div class="trial-selector-item">
+            <label class="trial-selector-label" for="medicine-select">Medicine</label>
+            <select id="medicine-select" class="trial-selector-select">
+              <option value="">All Medicines</option>
+            </select>
+          </div>
+          <div class="trial-selector-sep">›</div>
+          <div class="trial-selector-item">
+            <label class="trial-selector-label" for="trial-select">Trial</label>
+            <select id="trial-select" class="trial-selector-select">
+              <option value="">All Trials</option>
+            </select>
+          </div>
+          <div class="trial-scope-badge" id="trial-scope-badge">All Trials</div>
         </div>
         <div class="global-search-wrapper">
           <input type="text" id="global-search" class="global-search-input" placeholder="Search sites, deviations, CAPA..." autocomplete="off">

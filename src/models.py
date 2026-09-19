@@ -18,6 +18,8 @@ class User:
 @dataclass
 class RepositoryState:
     users: list[dict[str, Any]] = field(default_factory=list)
+    medicines: list[dict[str, Any]] = field(default_factory=list)
+    trials: list[dict[str, Any]] = field(default_factory=list)
     sites: list[dict[str, Any]] = field(default_factory=list)
     patients: list[dict[str, Any]] = field(default_factory=list)
     protocols: list[dict[str, Any]] = field(default_factory=list)

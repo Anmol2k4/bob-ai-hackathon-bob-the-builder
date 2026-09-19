@@ -371,19 +371,17 @@ def calculate_site_risk(
     current = int(min(99, max(5, raw_score)))
 
     # Deterministic per-site noise for natural score variation (demo sites excluded)
-    if site_id not in ("S037", "S008", "S021"):
+    _demo_sites = {"S037", "S008", "S021", "S058", "S085"}
+    if site_id not in _demo_sites:
         import hashlib
         site_hash = int(hashlib.md5(site_id.encode()).hexdigest()[:6], 16)
         noise = (site_hash % 17) - 8  # -8 to +8 deterministic noise
         current = int(min(95, max(5, current + noise)))
 
-    # Special override for known high-risk demo sites (S037=high_dosing, S008=high_missed, S021=high_frequency)
-    if site_id == "S037":
-        current = 87
-    elif site_id == "S008":
-        current = 76
-    elif site_id == "S021":
-        current = 71
+    # Special override for known high-risk demo sites
+    _score_overrides = {"S037": 87, "S008": 76, "S021": 71, "S058": 82, "S085": 79}
+    if site_id in _score_overrides:
+        current = _score_overrides[site_id]
 
     # Trend calculation
     if current > previous_score + 5:
@@ -393,7 +391,7 @@ def calculate_site_risk(
     else:
         trend = "STABLE"
 
-    if site_id in ("S037", "S008", "S021"):
+    if site_id in _demo_sites:
         trend = "WORSENING"
 
     # Risk drivers

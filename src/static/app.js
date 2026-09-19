@@ -13,9 +13,31 @@ let _currentContext = null; // { type: 'site'|'deviation'|'capa', id: string, la
 let _notifications = [];
 let _allAuditEvents = [];
 
+// ── Global trial context ────────────────────────────────────────────────────
+// Persisted across page navigations; null = "all trials"
+let _selectedTrialId = null;
+let _selectedMedicineId = null;
+let _allMedicines = [];
+let _allTrials = [];
+
+/**
+ * Append `?trial_id=...` to an API path when a trial is selected.
+ * Paths that should NOT be scoped (medicines/trials lookup, auth, audit) are
+ * listed in the bypass list.
+ */
+function _withTrial(path) {
+  if (!_selectedTrialId) return path;
+  const bypass = ["/api/medicines", "/api/trials", "/api/auth", "/api/audit", "/api/users"];
+  if (bypass.some((b) => path.startsWith(b))) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return path + sep + "trial_id=" + encodeURIComponent(_selectedTrialId);
+}
+
 // ── API layer ──────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const token = localStorage.getItem("tg_token");
+  // Auto-inject trial_id for GET requests to scoped endpoints
+  const effectivePath = method === "GET" ? _withTrial(path) : path;
   const opts = {
     method,
     headers: { "Content-Type": "application/json" },
@@ -23,7 +45,7 @@ async function api(method, path, body) {
   };
   if (token) opts.headers["Authorization"] = `Bearer ${token}`;
   if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
+  const res = await fetch(effectivePath, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw { status: res.status, message: data.error || res.statusText, data };
   return data;
@@ -99,12 +121,85 @@ function showApp() {
     capaBtnEl.style.display = "none";
   }
 
+  initTrialSelector();
   loadPage("dashboard");
   setupNav();
   setupFilters();
   setupBobInput();
   setupGlobalSearch();
   loadNotifications();
+}
+
+// ── Trial / Medicine Selector ───────────────────────────────────────────────
+async function initTrialSelector() {
+  try {
+    [_allMedicines, _allTrials] = await Promise.all([
+      get("/api/medicines"),
+      get("/api/trials"),
+    ]);
+  } catch {
+    return; // non-fatal — selector just stays empty
+  }
+
+  const medSel = document.getElementById("medicine-select");
+  const trialSel = document.getElementById("trial-select");
+  const scopeBadge = document.getElementById("trial-scope-badge");
+
+  // Populate medicine dropdown
+  _allMedicines.forEach((m) => {
+    const opt = document.createElement("option");
+    opt.value = m.medicine_id;
+    opt.textContent = m.medicine_code + " – " + m.medicine_name.split(" (")[0];
+    medSel.appendChild(opt);
+  });
+
+  function populateTrials(medicineId) {
+    // Clear existing non-default options
+    while (trialSel.options.length > 1) trialSel.remove(1);
+    const filtered = medicineId
+      ? _allTrials.filter((t) => t.medicine_id === medicineId)
+      : _allTrials;
+    filtered.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value = t.trial_id;
+      opt.textContent = t.trial_code + " · " + t.trial_name;
+      trialSel.appendChild(opt);
+    });
+  }
+
+  function updateScopeBadge() {
+    if (_selectedTrialId) {
+      const trial = _allTrials.find((t) => t.trial_id === _selectedTrialId);
+      scopeBadge.textContent = trial ? trial.trial_code : _selectedTrialId;
+    } else if (_selectedMedicineId) {
+      const med = _allMedicines.find((m) => m.medicine_id === _selectedMedicineId);
+      scopeBadge.textContent = med ? med.medicine_code + " (all trials)" : "All Trials";
+    } else {
+      scopeBadge.textContent = "All Trials";
+    }
+  }
+
+  populateTrials(null);
+
+  medSel.addEventListener("change", () => {
+    _selectedMedicineId = medSel.value || null;
+    _selectedTrialId = null;
+    populateTrials(_selectedMedicineId);
+    trialSel.value = "";
+    updateScopeBadge();
+    loadPage(_currentPage());
+  });
+
+  trialSel.addEventListener("change", () => {
+    _selectedTrialId = trialSel.value || null;
+    updateScopeBadge();
+    loadPage(_currentPage());
+  });
+}
+
+function _currentPage() {
+  const active = document.querySelector(".page.active");
+  return active ? active.id.replace("page-", "") : "dashboard";
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────

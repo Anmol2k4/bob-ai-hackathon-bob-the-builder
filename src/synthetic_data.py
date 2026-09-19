@@ -24,6 +24,8 @@ def build_demo_state() -> RepositoryState:
     state = RepositoryState()
 
     state.users = _build_users()
+    state.medicines = _build_medicines()
+    state.trials = _build_trials()
     state.sites = _build_sites(rng)
     state.patients = _build_patients(state.sites, rng)
     state.protocols = _build_protocol()
@@ -35,6 +37,105 @@ def build_demo_state() -> RepositoryState:
     state.capa_records = _build_capa_records(state.sites, state.deviations)
     state.audit_events = _build_audit_events(state.users)
     return state
+
+
+# ─── medicines & trials ───────────────────────────────────────────────────────
+
+def _build_medicines() -> list[dict]:
+    return [
+        {
+            "medicine_id": "MED-001",
+            "medicine_code": "TG-101",
+            "medicine_name": "TG-101 (Synthetic Compound A)",
+            "therapeutic_area": "Oncology",
+            "sponsor": "TrialGuard Demo Sponsor",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+        {
+            "medicine_id": "MED-002",
+            "medicine_code": "TG-205",
+            "medicine_name": "TG-205 (Synthetic Compound B)",
+            "therapeutic_area": "Cardiology",
+            "sponsor": "TrialGuard Demo Sponsor",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+        {
+            "medicine_id": "MED-003",
+            "medicine_code": "TG-310",
+            "medicine_name": "TG-310 (Synthetic Compound C)",
+            "therapeutic_area": "Neurology",
+            "sponsor": "TrialGuard Demo Sponsor",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+    ]
+
+
+def _build_trials() -> list[dict]:
+    return [
+        {
+            "trial_id": "TG-101-PH2",
+            "trial_code": "TG-101-PH2",
+            "trial_name": "TG-101 Phase II Safety Study",
+            "medicine_id": "MED-001",
+            "medicine_code": "TG-101",
+            "phase": "Phase II",
+            "protocol_id": "TG-101",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+        {
+            "trial_id": "TG-205-PH2",
+            "trial_code": "TG-205-PH2",
+            "trial_name": "TG-205 Phase II Efficacy Study",
+            "medicine_id": "MED-002",
+            "medicine_code": "TG-205",
+            "phase": "Phase II",
+            "protocol_id": "TG-205",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+        {
+            "trial_id": "TG-310-PH3",
+            "trial_code": "TG-310-PH3",
+            "trial_name": "TG-310 Phase III Confirmatory Study",
+            "medicine_id": "MED-003",
+            "medicine_code": "TG-310",
+            "phase": "Phase III",
+            "protocol_id": "TG-310",
+            "status": "ACTIVE",
+            "synthetic": True,
+        },
+    ]
+
+
+# Mapping: trial_id → which site IDs belong to it and trial-specific overrides
+TRIAL_SITE_MAP = {
+    "TG-101-PH2": list(range(1, 43)),        # S001-S042: existing 42 sites
+    "TG-205-PH2": list(range(43, 71)),       # S043-S070: 28 sites (missed-visits focus)
+    "TG-310-PH3": list(range(71, 99)),       # S071-S098: 28 sites (prohibited-meds focus)
+}
+
+# Hero sites per trial
+TRIAL_HERO_SITES = {
+    "TG-101-PH2": {"S037": "high_dosing", "S008": "high_missed", "S021": "high_frequency"},
+    "TG-205-PH2": {"S058": "high_missed_v2"},
+    "TG-310-PH3": {"S085": "high_prohibited"},
+}
+
+# Override risk scores for new hero sites
+TRIAL_HERO_OVERRIDES = {
+    "S058": (82, "HIGH", "WORSENING"),
+    "S085": (79, "HIGH", "WORSENING"),
+}
+
+# Demo history for new hero sites
+_DEMO_SITE_HISTORY_EXTRA = {
+    "S058": [46, 54, 61, 69, 76],   # worsening → current 82
+    "S085": [40, 48, 56, 64, 73],   # worsening → current 79
+}
 
 
 # ─── users ────────────────────────────────────────────────────────────────────
@@ -90,25 +191,71 @@ SITE_PROFILES = {
     "S037": "high_dosing",
     "S008": "high_missed",    # S008 = second high-risk site (missed visits)
     "S021": "high_frequency", # S021 = third high-risk site (high frequency)
+    "S058": "high_missed_v2",   # TG-205-PH2 hero site (missed visits primary)
+    "S085": "high_prohibited",  # TG-310-PH3 hero site (prohibited medications)
 }
 
 # Map human-readable demo names to actual site IDs
-HIGH_RISK_DEMO_SITES = ["S037", "S008", "S021"]
+HIGH_RISK_DEMO_SITES = ["S037", "S008", "S021", "S058", "S085"]
+
+
+def _site_trial_id(index: int) -> str:
+    """Determine which trial_id a site belongs to by its index."""
+    if index <= 42:
+        return "TG-101-PH2"
+    elif index <= 70:
+        return "TG-205-PH2"
+    else:
+        return "TG-310-PH3"
 
 
 def _build_sites(rng: random.Random) -> list[dict]:
     sites = []
+    # TG-101-PH2: S001-S042
     for index in range(1, 43):
         site_id = f"S{index:03d}"
         profile = SITE_PROFILES.get(site_id, "medium" if index % 3 == 0 else "low")
         sites.append({
             "site_id": site_id,
+            "trial_id": "TG-101-PH2",
             "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
             "location": LOCATIONS[index % len(LOCATIONS)],
             "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
             "patient_count": 20 + (index % 15),
             "status": "ACTIVE" if index % 12 != 0 else "SUSPENDED",
             "created_at": "2026-01-10",
+            "profile": profile,
+            "synthetic": True,
+        })
+    # TG-205-PH2: S043-S070 (28 sites, missed-visits focus)
+    for index in range(43, 71):
+        site_id = f"S{index:03d}"
+        profile = SITE_PROFILES.get(site_id, "high_missed_v2" if index % 4 == 0 else "medium")
+        sites.append({
+            "site_id": site_id,
+            "trial_id": "TG-205-PH2",
+            "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
+            "location": LOCATIONS[index % len(LOCATIONS)],
+            "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
+            "patient_count": 18 + (index % 12),
+            "status": "ACTIVE" if index % 11 != 0 else "SUSPENDED",
+            "created_at": "2026-02-01",
+            "profile": profile,
+            "synthetic": True,
+        })
+    # TG-310-PH3: S071-S098 (28 sites, prohibited-meds focus)
+    for index in range(71, 99):
+        site_id = f"S{index:03d}"
+        profile = SITE_PROFILES.get(site_id, "high_prohibited" if index % 5 == 0 else "medium")
+        sites.append({
+            "site_id": site_id,
+            "trial_id": "TG-310-PH3",
+            "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
+            "location": LOCATIONS[index % len(LOCATIONS)],
+            "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
+            "patient_count": 15 + (index % 14),
+            "status": "ACTIVE" if index % 10 != 0 else "SUSPENDED",
+            "created_at": "2026-03-01",
             "profile": profile,
             "synthetic": True,
         })
@@ -123,14 +270,16 @@ def _build_patients(sites: list[dict], rng: random.Random) -> list[dict]:
     for site in sites:
         count = site["patient_count"]
         site_id = site["site_id"]
+        trial_id = site.get("trial_id", "TG-101-PH2")
         for i in range(1, count + 1):
             # Eligibility violators: ~5% are outside 18-65
             age = rng.randint(19, 63)
-            if site_id in ("S008", "S021") and i <= 2:
+            if site_id in ("S008", "S021", "S058") and i <= 2:
                 age = rng.choice([16, 17, 67, 70])  # deliberate eligibility violations
             patients.append({
                 "patient_id": f"P-{site_id[1:]}-{i:03d}",
                 "site_id": site_id,
+                "trial_id": trial_id,
                 "age": age,
                 "gender": genders[rng.randint(0, 2)],
                 "enrollment_date": "2026-01-15",
@@ -254,14 +403,14 @@ def _build_visits(patients: list[dict], rng: random.Random) -> list[dict]:
                 dose = 150 if rng.random() < 0.35 else 100  # 35% dosing error
                 delay = rng.randint(3, 8) if rng.random() < 0.4 else 0
                 offset = rng.randint(-1, 1)
-            elif profile == "high_missed":
+            elif profile in ("high_missed", "high_missed_v2"):
                 # More missed visits
                 if rng.random() < 0.2:
                     continue  # missed visit
                 dose = 100
                 delay = rng.randint(2, 5) if rng.random() < 0.25 else 0
                 offset = rng.randint(-5, 8) if rng.random() < 0.3 else rng.randint(-1, 1)
-            elif profile in ("high_frequency", "medium"):
+            elif profile in ("high_frequency", "medium", "high_prohibited"):
                 dose = 80 if rng.random() < 0.1 else 100
                 delay = rng.randint(3, 6) if rng.random() < 0.15 else 0
                 offset = rng.randint(-3, 5) if rng.random() < 0.2 else rng.randint(-1, 1)
@@ -296,7 +445,8 @@ def _site_profile(site_id: str) -> str:
 
 def _missing_rate(site_id: str) -> float:
     p = _site_profile(site_id)
-    return {"high_dosing": 0.08, "high_missed": 0.12, "high_frequency": 0.10, "medium": 0.04, "low": 0.01}.get(p, 0.02)
+    return {"high_dosing": 0.08, "high_missed": 0.12, "high_missed_v2": 0.18,
+            "high_frequency": 0.10, "high_prohibited": 0.07, "medium": 0.04, "low": 0.01}.get(p, 0.02)
 
 
 # ─── medications ──────────────────────────────────────────────────────────────
@@ -308,24 +458,30 @@ def _build_medications(patients: list[dict], rng: random.Random) -> list[dict]:
     for patient in patients:
         pid = patient["patient_id"]
         site_id = patient["site_id"]
+        trial_id = patient.get("trial_id", "TG-101-PH2")
         profile = _site_profile(site_id)
         # Most patients have 1-3 benign meds
         for _ in range(rng.randint(0, 2)):
             meds.append({
                 "medication_id": f"MED-{pid}-{len(meds):04d}",
                 "patient_id": pid,
+                "site_id": site_id,
+                "trial_id": trial_id,
                 "medication_name": rng.choice(benign),
                 "start_date": "2026-01-01",
                 "end_date": None,
                 "prohibited": False,
                 "synthetic": True,
             })
-        # Prohibited meds: higher rate at high-risk sites
-        prob = {"high_dosing": 0.18, "high_missed": 0.10, "high_frequency": 0.15}.get(profile, 0.04)
+        # Prohibited meds: higher rate at high-risk sites; very high at high_prohibited sites
+        prob = {"high_dosing": 0.18, "high_missed": 0.10, "high_missed_v2": 0.12,
+                "high_frequency": 0.15, "high_prohibited": 0.38}.get(profile, 0.04)
         if rng.random() < prob:
             meds.append({
                 "medication_id": f"MED-{pid}-PRO-{len(meds):04d}",
                 "patient_id": pid,
+                "site_id": site_id,
+                "trial_id": trial_id,
                 "medication_name": rng.choice(prohibited),
                 "start_date": "2026-02-01",
                 "end_date": None,
@@ -346,14 +502,24 @@ def _build_deviations(
 ) -> list[dict]:
     """Build deviations by running the deterministic deviation engine over synthetic data."""
     from engines import run_deviation_engine
-    from models import RepositoryState
     protocols = _build_protocol()
     deviations = run_deviation_engine(protocols, patients, visits, medications)
+
+    # Build a site→trial_id lookup
+    site_trial = {s["site_id"]: s.get("trial_id", "TG-101-PH2") for s in sites}
+
+    # Tag trial_id on every deviation
+    for dev in deviations:
+        dev.setdefault("trial_id", site_trial.get(dev.get("site_id", ""), "TG-101-PH2"))
 
     # Ensure S037 has a strong set of deviations for demo narrative
     s037_devs = [d for d in deviations if d["site_id"] == "S037"]
     if len(s037_devs) < 12:
         _inject_s037_deviations(deviations, patients, rng)
+
+    # Inject hero-site deviations for TG-205-PH2 and TG-310-PH3
+    _inject_s112_deviations(deviations, patients, rng)
+    _inject_s218_deviations(deviations, patients, rng)
 
     # Assign sequential IDs for readability
     for i, dev in enumerate(deviations, 1):
@@ -377,6 +543,7 @@ def _inject_s037_deviations(deviations: list[dict], patients: list[dict], rng: r
             "deviation_id": f"S037-INJ-{i+1:03d}",
             "patient_id": patient["patient_id"],
             "site_id": "S037",
+            "trial_id": "TG-101-PH2",
             "type": dtype,
             "description": f"{dtype.replace('_', ' ').title()} — injected for demo narrative",
             "expected": "100 mg" if dtype == "INCORRECT_DOSE" else "Per protocol",
@@ -388,6 +555,69 @@ def _inject_s037_deviations(deviations: list[dict], patients: list[dict], rng: r
             "risk_factors": ["recurrence", "trending"],
             "status": "OPEN",
             "evidence": {"protocol_id": "TG-101", "rule_id": "R-003" if dtype == "INCORRECT_DOSE" else "R-008",
+                         "comparison": "deterministic deviation engine"},
+            "created_at": d,
+            "synthetic": True,
+        })
+
+
+def _inject_s112_deviations(deviations: list[dict], patients: list[dict], rng: random.Random) -> None:
+    """Inject S058 deviations: missed visits pattern for TG-205-PH2."""
+    s112_patients = [p for p in patients if p["site_id"] == "S058"][:5]
+    if not s112_patients:
+        return
+    dates = ["2026-04-05", "2026-04-12", "2026-04-20", "2026-05-02", "2026-05-09",
+             "2026-05-14", "2026-05-17", "2026-05-19"]
+    for i, (patient, d) in enumerate(zip(s112_patients * 3, dates)):
+        dtype = ["MISSED_VISIT", "MISSED_VISIT", "LATE_DATA_ENTRY", "MISSING_ASSESSMENT", "MISSED_VISIT"][i % 5]
+        deviations.append({
+            "deviation_id": f"S058-INJ-{i+1:03d}",
+            "patient_id": patient["patient_id"],
+            "site_id": "S058",
+            "trial_id": "TG-205-PH2",
+            "type": dtype,
+            "description": f"{dtype.replace('_', ' ').title()} — injected for TG-205 demo narrative",
+            "expected": "Per protocol",
+            "actual": "Not completed",
+            "detected_at": d,
+            "severity": "MAJOR" if dtype == "MISSING_ASSESSMENT" else "MINOR",
+            "severity_score": 12 if dtype == "MISSING_ASSESSMENT" else 6,
+            "severity_reason": "Prototype score from multi-factor severity engine.",
+            "risk_factors": ["recurrence", "trending"],
+            "status": "OPEN",
+            "evidence": {"protocol_id": "TG-205", "rule_id": "R-008",
+                         "comparison": "deterministic deviation engine"},
+            "created_at": d,
+            "synthetic": True,
+        })
+
+
+def _inject_s218_deviations(deviations: list[dict], patients: list[dict], rng: random.Random) -> None:
+    """Inject S085 deviations: prohibited medication pattern for TG-310-PH3."""
+    s218_patients = [p for p in patients if p["site_id"] == "S085"][:5]
+    if not s218_patients:
+        return
+    dates = ["2026-04-08", "2026-04-16", "2026-04-25", "2026-05-03", "2026-05-10",
+             "2026-05-13", "2026-05-16", "2026-05-20"]
+    for i, (patient, d) in enumerate(zip(s218_patients * 3, dates)):
+        dtype = ["PROHIBITED_MEDICATION", "PROHIBITED_MEDICATION", "LATE_DATA_ENTRY",
+                 "MISSING_ASSESSMENT", "PROHIBITED_MEDICATION"][i % 5]
+        deviations.append({
+            "deviation_id": f"S085-INJ-{i+1:03d}",
+            "patient_id": patient["patient_id"],
+            "site_id": "S085",
+            "trial_id": "TG-310-PH3",
+            "type": dtype,
+            "description": f"{dtype.replace('_', ' ').title()} — injected for TG-310 demo narrative",
+            "expected": "No prohibited medications (Drug X / Drug Y)",
+            "actual": "Drug X administered" if dtype == "PROHIBITED_MEDICATION" else "Not completed",
+            "detected_at": d,
+            "severity": "MAJOR" if dtype in ("PROHIBITED_MEDICATION", "MISSING_ASSESSMENT") else "MINOR",
+            "severity_score": 15 if dtype == "PROHIBITED_MEDICATION" else 7,
+            "severity_reason": "Prototype score from multi-factor severity engine.",
+            "risk_factors": ["recurrence", "trending"],
+            "status": "OPEN",
+            "evidence": {"protocol_id": "TG-310", "rule_id": "R-004",
                          "comparison": "deterministic deviation engine"},
             "created_at": d,
             "synthetic": True,
@@ -411,6 +641,7 @@ def _build_risk_scores(sites: list[dict], deviations: list[dict], risk_history: 
     for site in sites:
         risk = calculate_site_risk(site["site_id"], deviations, previous_score=0, risk_history=risk_history)
         risk["calculated_at"] = "2026-05-18"
+        risk["trial_id"] = site.get("trial_id", "TG-101-PH2")
         scores.append(risk)
     return scores
 
@@ -422,6 +653,8 @@ _DEMO_SITE_HISTORY = {
     "S037": [61, 68, 74, 81, 87],   # worsening trajectory → current 87
     "S008": [52, 58, 64, 70, 76],   # worsening trajectory → current 76
     "S021": [48, 54, 60, 65, 71],   # worsening trajectory → current 71
+    "S058": [46, 54, 61, 69, 76],   # worsening trajectory → current 82
+    "S085": [40, 48, 56, 64, 73],   # worsening trajectory → current 79
 }
 _HISTORY_PERIODS = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"]
 
@@ -439,6 +672,7 @@ def _build_risk_history(sites: list[dict], deviations: list[dict]) -> list[dict]
 
     for site in sites:
         sid = site["site_id"]
+        trial_id = site.get("trial_id", "TG-101-PH2")
         current_devs = dev_by_site.get(sid, [])
         major_now = sum(1 for d in current_devs if d["severity"] == "MAJOR")
 
@@ -467,6 +701,7 @@ def _build_risk_history(sites: list[dict], deviations: list[dict]) -> list[dict]
             maj_count = max(0, int(major_now * ratio))
             history.append({
                 "site_id": sid,
+                "trial_id": trial_id,
                 "period": period,
                 "risk_score": score,
                 "deviation_count": dev_count,
@@ -481,20 +716,23 @@ def _build_risk_history(sites: list[dict], deviations: list[dict]) -> list[dict]
 def _build_capa_records(sites: list[dict], deviations: list[dict]) -> list[dict]:
     from services import generate_capa_record
     records = []
-    high_risk_sites = ["S037", "S008", "S021"]
-    overrides = {
-        "S037": {"capa_id": "CAPA-0001", "status": "OPEN",        "created_at": "2026-05-18", "updated_at": "2026-05-18"},
-        "S008": {"capa_id": "CAPA-0002", "status": "IN_PROGRESS", "created_at": "2026-05-10", "updated_at": "2026-05-15"},
-        "S021": {"capa_id": "CAPA-0003", "status": "IN_PROGRESS", "created_at": "2026-05-12", "updated_at": "2026-05-16"},
+    # site_id → (trial_id, fixed capa metadata)
+    high_risk_sites = {
+        "S037": ("TG-101-PH2", {"capa_id": "CAPA-0001", "status": "OPEN",        "created_at": "2026-05-18", "updated_at": "2026-05-18"}),
+        "S008": ("TG-101-PH2", {"capa_id": "CAPA-0002", "status": "IN_PROGRESS", "created_at": "2026-05-10", "updated_at": "2026-05-15"}),
+        "S021": ("TG-101-PH2", {"capa_id": "CAPA-0003", "status": "IN_PROGRESS", "created_at": "2026-05-12", "updated_at": "2026-05-16"}),
+        "S058": ("TG-205-PH2", {"capa_id": "CAPA-0004", "status": "OPEN",        "created_at": "2026-05-19", "updated_at": "2026-05-19"}),
+        "S085": ("TG-310-PH3", {"capa_id": "CAPA-0005", "status": "OPEN",        "created_at": "2026-05-20", "updated_at": "2026-05-20"}),
     }
-    for site_id in high_risk_sites:
+    for site_id, (trial_id, override) in high_risk_sites.items():
         devs = [d for d in deviations if d["site_id"] == site_id and d["severity"] == "MAJOR"][:5]
         if not devs:
             devs = [d for d in deviations if d["site_id"] == site_id][:3]
         if not devs:
             continue
         record = generate_capa_record(site_id, devs, "U-MANAGER")
-        record.update(overrides.get(site_id, {}))
+        record.update(override)
+        record["trial_id"] = trial_id
         records.append(record)
     return records
 

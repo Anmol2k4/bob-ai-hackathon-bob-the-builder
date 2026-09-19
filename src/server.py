@@ -196,17 +196,23 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_error(401, "Authentication required")
                 return
 
+            # Medicines / Trials
+            if path == "/api/medicines" and method == "GET":
+                self._list_medicines(sess)
+            elif path == "/api/trials" and method == "GET":
+                self._list_trials(sess, qs)
+
             # Dashboard
-            if path == "/api/dashboard/summary" and method == "GET":
-                self._dashboard_summary(sess)
+            elif path == "/api/dashboard/summary" and method == "GET":
+                self._dashboard_summary(sess, qs)
             elif path == "/api/dashboard/charts" and method == "GET":
-                self._dashboard_charts(sess)
+                self._dashboard_charts(sess, qs)
             elif path == "/api/dashboard/attention" and method == "GET":
-                self._dashboard_attention(sess)
+                self._dashboard_attention(sess, qs)
             elif path == "/api/dashboard/heatmap" and method == "GET":
-                self._dashboard_heatmap(sess)
+                self._dashboard_heatmap(sess, qs)
             elif path == "/api/dashboard/emerging-sites" and method == "GET":
-                self._dashboard_emerging_sites(sess)
+                self._dashboard_emerging_sites(sess, qs)
 
             # Protocol
             elif path == "/api/protocol" and method == "GET":
@@ -216,7 +222,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Sites
             elif path == "/api/sites" and method == "GET":
-                self._list_sites(sess)
+                self._list_sites(sess, qs)
             elif re.match(r"^/api/sites/[^/]+$", path) and method == "GET":
                 site_id = path.split("/")[-1]
                 self._get_site(sess, site_id)
@@ -244,7 +250,7 @@ class Handler(BaseHTTPRequestHandler):
 
             # Deviations
             elif path == "/api/deviations" and method == "GET":
-                self._list_deviations(sess, qs)
+                self._list_deviations(sess, qs)  # qs already forwarded
             elif path == "/api/deviations/analyze" and method == "POST":
                 self._analyze_deviations(sess)
             elif re.match(r"^/api/deviations/[^/]+$", path) and method == "GET":
@@ -373,13 +379,36 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── dashboard ─────────────────────────────────────────────────────────────
 
-    def _dashboard_summary(self, sess: dict) -> None:
+    # ── medicines & trials ────────────────────────────────────────────────────
+
+    def _list_medicines(self, sess: dict) -> None:
+        medicines = _repo.all("medicines")
+        self._send_json(200, medicines)
+
+    def _list_trials(self, sess: dict, qs: dict) -> None:
+        trials = _repo.all("trials")
+        medicine_id = (qs.get("medicine_id") or [None])[0]
+        if medicine_id:
+            trials = [t for t in trials if t.get("medicine_id") == medicine_id]
+        self._send_json(200, trials)
+
+    # ── dashboard ─────────────────────────────────────────────────────────────
+
+    def _dashboard_summary(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         _audit(sess["user_id"], "VIEW_DASHBOARD", "dashboard")
         sites = _repo.all("sites")
         patients = _repo.all("patients")
         deviations = _repo.all("deviations")
         risk_scores = _repo.all("risk_scores")
         capa_records = _repo.all("capa_records")
+
+        if trial_id:
+            sites = [s for s in sites if s.get("trial_id") == trial_id]
+            patients = [p for p in patients if p.get("trial_id") == trial_id]
+            deviations = [d for d in deviations if d.get("trial_id") == trial_id]
+            risk_scores = [r for r in risk_scores if r.get("trial_id") == trial_id]
+            capa_records = [c for c in capa_records if c.get("trial_id") == trial_id]
 
         if sess["role"] == "SITE_COORDINATOR":
             sid = sess["site_id"]
@@ -401,10 +430,16 @@ class Handler(BaseHTTPRequestHandler):
             "last_updated": datetime.now(timezone.utc).isoformat(),
         })
 
-    def _dashboard_charts(self, sess: dict) -> None:
+    def _dashboard_charts(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         deviations = _repo.all("deviations")
         risk_scores = _repo.all("risk_scores")
         capa_records = _repo.all("capa_records")
+
+        if trial_id:
+            deviations = [d for d in deviations if d.get("trial_id") == trial_id]
+            risk_scores = [r for r in risk_scores if r.get("trial_id") == trial_id]
+            capa_records = [c for c in capa_records if c.get("trial_id") == trial_id]
 
         if sess["role"] == "SITE_COORDINATOR":
             sid = sess["site_id"]
@@ -448,10 +483,15 @@ class Handler(BaseHTTPRequestHandler):
         })
 
 
-    def _dashboard_attention(self, sess: dict) -> None:
+    def _dashboard_attention(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         _audit(sess["user_id"], "VIEW_DASHBOARD_ATTENTION", "dashboard")
         risk_scores = _repo.all("risk_scores")
         deviations = _repo.all("deviations")
+
+        if trial_id:
+            risk_scores = [r for r in risk_scores if r.get("trial_id") == trial_id]
+            deviations = [d for d in deviations if d.get("trial_id") == trial_id]
 
         if sess["role"] == "SITE_COORDINATOR":
             sid = sess["site_id"]
@@ -554,10 +594,15 @@ class Handler(BaseHTTPRequestHandler):
             "health_level": health_level,
         })
 
-    def _dashboard_heatmap(self, sess: dict) -> None:
+    def _dashboard_heatmap(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         _audit(sess["user_id"], "VIEW_DASHBOARD_HEATMAP", "dashboard")
         sites = _repo.all("sites")
         risk_scores = _repo.all("risk_scores")
+
+        if trial_id:
+            sites = [s for s in sites if s.get("trial_id") == trial_id]
+            risk_scores = [r for r in risk_scores if r.get("trial_id") == trial_id]
 
         risk_by_site = {r["site_id"]: r for r in risk_scores}
 
@@ -578,10 +623,16 @@ class Handler(BaseHTTPRequestHandler):
         result.sort(key=lambda x: x["risk_score"], reverse=True)
         self._send_json(200, result)
 
-    def _dashboard_emerging_sites(self, sess: dict) -> None:
+    def _dashboard_emerging_sites(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         _audit(sess["user_id"], "VIEW_DASHBOARD_EMERGING", "dashboard")
         all_history = _repo.all("risk_history")
         risk_scores = _repo.all("risk_scores")
+
+        if trial_id:
+            all_history = [h for h in all_history if h.get("trial_id") == trial_id]
+            risk_scores = [r for r in risk_scores if r.get("trial_id") == trial_id]
+
         risk_by_site = {r["site_id"]: r for r in risk_scores}
         sites = _repo.all("sites")
         site_map = {s["site_id"]: s for s in sites}
@@ -714,8 +765,11 @@ class Handler(BaseHTTPRequestHandler):
 
     # ── sites ─────────────────────────────────────────────────────────────────
 
-    def _list_sites(self, sess: dict) -> None:
+    def _list_sites(self, sess: dict, qs: dict) -> None:
+        trial_id = (qs.get("trial_id") or [None])[0]
         sites = _repo.all("sites")
+        if trial_id:
+            sites = [s for s in sites if s.get("trial_id") == trial_id]
         risk_scores = {r["site_id"]: r for r in _repo.all("risk_scores")}
         if sess["role"] == "SITE_COORDINATOR":
             sites = [s for s in sites if s["site_id"] == sess["site_id"]]
