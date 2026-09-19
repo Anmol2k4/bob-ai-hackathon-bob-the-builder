@@ -509,8 +509,11 @@
           <div class="report-card">
             <div class="report-icon">🏥</div>
             <h3>Site Risk Report</h3>
-            <p>Detailed risk assessment for Site S037 — deviation evidence, leading indicators, trends.</p>
-            <button class="btn btn-primary" onclick="generateReport('site', 'S037')">S037 Risk Report</button>
+            <p>Detailed risk assessment for any site — deviation evidence, leading indicators, trends.</p>
+            <select id="report-site-select" class="filter-select w-full" style="margin-bottom:10px">
+              <option value="">Select a site...</option>
+            </select>
+            <button class="btn btn-primary" onclick="generateSiteReport()">Generate Site Report</button>
           </div>
         </div>
 

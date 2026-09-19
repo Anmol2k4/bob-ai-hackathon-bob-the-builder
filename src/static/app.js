@@ -161,7 +161,7 @@ function loadPage(page, params) {
     case "deviation-detail": loadDeviationDetail(params); setPageContext("deviation", params, "Deviation " + params); break;
     case "capa": loadCapa(); setPageContext(null); break;
     case "capa-detail": loadCapaDetail(params); setPageContext("capa", params, "CAPA " + params); break;
-    case "reports": renderRecentReports(); setPageContext(null); break;
+    case "reports": renderRecentReports(); loadReportSiteSelector(); setPageContext(null); break;
     case "audit": loadAudit(); setPageContext(null); break;
     case "bob": loadBobTools(); setPageContext(null); break;
     case "settings": loadSettings(); setPageContext(null); break;
@@ -1183,6 +1183,24 @@ window.submitCapaStatusUpdate = submitCapaStatusUpdate;
 // ── Reports ────────────────────────────────────────────────────────────────
 // Recent reports tracker
 let _recentReports = [];
+
+async function loadReportSiteSelector() {
+  const sel = document.getElementById("report-site-select");
+  if (!sel) return;
+  try {
+    const sites = _allSites.length ? _allSites : await get("/api/sites");
+    if (!_allSites.length) _allSites = sites;
+    sel.innerHTML = `<option value="">Select a site...</option>` +
+      sites.map((s) => `<option value="${s.site_id}">${s.site_id} — ${s.name || s.site_id}</option>`).join("");
+  } catch {}
+}
+
+function generateSiteReport() {
+  const siteId = document.getElementById("report-site-select")?.value;
+  if (!siteId) { alert("Please select a site first."); return; }
+  generateReport("site", siteId);
+}
+window.generateSiteReport = generateSiteReport;
 
 function addRecentReport(type, title, siteId) {
   _recentReports.unshift({ type, title, siteId, generated: new Date().toLocaleString() });
