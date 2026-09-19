@@ -181,16 +181,39 @@
         </div>
 
         <!-- Site Risk Heatmap -->
-        <div class="data-panel">
-          <div class="panel-header">
-            <h3>Site Risk Heatmap</h3>
-            <span class="heatmap-legend">
-              <span class="hm-dot high"></span>HIGH
-              <span class="hm-dot medium"></span>MEDIUM
-              <span class="hm-dot low"></span>LOW
-            </span>
+        <div class="data-panel hm-panel">
+          <div class="hm-panel-header">
+            <div class="hm-title-row">
+              <div>
+                <h3 class="hm-title">Site Risk Heatmap</h3>
+                <span class="hm-site-count" id="hm-site-count"></span>
+              </div>
+              <div class="hm-controls">
+                <span class="hm-sort-label">Sort:</span>
+                <div class="hm-sort-btns">
+                  <button class="hm-sort-btn active" data-sort="risk" onclick="setHeatmapSort('risk')">Risk ↓</button>
+                  <button class="hm-sort-btn" data-sort="id" onclick="setHeatmapSort('id')">Site ID</button>
+                  <button class="hm-sort-btn" data-sort="trend" onclick="setHeatmapSort('trend')">Trend</button>
+                </div>
+              </div>
+            </div>
+            <div class="hm-legend-row">
+              <span class="hm-legend-label">Risk Level</span>
+              <div class="hm-legend-scale">
+                <div class="hm-legend-item"><span class="hm-legend-dot hm-color-low"></span><span class="hm-legend-text">Low <span class="hm-legend-range">0–29</span></span></div>
+                <div class="hm-legend-item"><span class="hm-legend-dot hm-color-moderate"></span><span class="hm-legend-text">Moderate <span class="hm-legend-range">30–59</span></span></div>
+                <div class="hm-legend-item"><span class="hm-legend-dot hm-color-elevated"></span><span class="hm-legend-text">Elevated <span class="hm-legend-range">60–79</span></span></div>
+                <div class="hm-legend-item"><span class="hm-legend-dot hm-color-high"></span><span class="hm-legend-text">High <span class="hm-legend-range">80–89</span></span></div>
+                <div class="hm-legend-item"><span class="hm-legend-dot hm-color-critical"></span><span class="hm-legend-text">Critical <span class="hm-legend-range">90+</span></span></div>
+              </div>
+              <div class="hm-threshold-note">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 1 L11 10 H1 Z"/><line x1="6" y1="5" x2="6" y2="8"/></svg>
+                Blacklist threshold: 90+
+              </div>
+            </div>
           </div>
           <div id="site-heatmap" class="site-heatmap"></div>
+          <div id="hm-tooltip" class="hm-tooltip" style="display:none"></div>
         </div>
 
         <!-- Charts row -->

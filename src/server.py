@@ -632,6 +632,7 @@ class Handler(BaseHTTPRequestHandler):
                 "risk_score": r.get("current_score", 0),
                 "risk_level": r.get("risk_level", "LOW"),
                 "trend": r.get("trend", "STABLE"),
+                "is_blacklisted": bool(s.get("is_blacklisted", False)),
             })
 
         result.sort(key=lambda x: x["risk_score"], reverse=True)

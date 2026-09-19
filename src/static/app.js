@@ -2000,22 +2000,157 @@ async function loadDashboardAttention() {
 }
 
 // ── Site Heatmap ────────────────────────────────────────────────────────────
+let _hmSites = [];      // full dataset cached for re-sort
+let _hmSort  = "risk";  // current sort key
+
+function _hmRiskBand(score) {
+  if (score >= 90) return "critical";
+  if (score >= 80) return "high";
+  if (score >= 60) return "elevated";
+  if (score >= 30) return "moderate";
+  return "low";
+}
+
+function _hmBandLabel(score) {
+  if (score >= 90) return "CRITICAL";
+  if (score >= 80) return "HIGH";
+  if (score >= 60) return "ELEVATED";
+  if (score >= 30) return "MODERATE";
+  return "LOW";
+}
+
+function _hmSorted(sites, key) {
+  const copy = [...sites];
+  if (key === "risk")  return copy.sort((a, b) => b.risk_score - a.risk_score);
+  if (key === "id")    return copy.sort((a, b) => a.site_id.localeCompare(b.site_id));
+  if (key === "trend") {
+    const order = { WORSENING: 0, STABLE: 1, IMPROVING: 2 };
+    return copy.sort((a, b) => {
+      const diff = (order[a.trend] ?? 1) - (order[b.trend] ?? 1);
+      return diff !== 0 ? diff : b.risk_score - a.risk_score;
+    });
+  }
+  return copy;
+}
+
+function _hmTrendIcon(trend) {
+  if (trend === "WORSENING") return '<span class="hm-trend hm-trend-worse">↑ WORSENING</span>';
+  if (trend === "IMPROVING") return '<span class="hm-trend hm-trend-better">↓ IMPROVING</span>';
+  return "";
+}
+
+function _renderHeatmapTiles(sites) {
+  const container = document.getElementById("site-heatmap");
+  if (!container) return;
+  const tooltip  = document.getElementById("hm-tooltip");
+
+  container.innerHTML = _hmSorted(sites, _hmSort).map((s, idx) => {
+    const band      = _hmRiskBand(s.risk_score);
+    const label     = _hmBandLabel(s.risk_score);
+    const trendHtml = _hmTrendIcon(s.trend);
+    const isBlack   = s.is_blacklisted;
+    const isCrit    = s.risk_score >= 90;
+
+    return `<div
+      class="hm-tile hm-band-${band}${isBlack ? " hm-blacklisted" : ""}${isCrit && !isBlack ? " hm-near-critical" : ""}"
+      data-idx="${idx}"
+      onclick="loadPage('site-detail','${escapeHtml(s.site_id)}')"
+      role="button"
+      tabindex="0"
+      aria-label="${escapeHtml(s.name || s.site_id)}, risk score ${s.risk_score}, ${label}"
+      style="animation-delay:${Math.min(idx * 18, 400)}ms"
+    >
+      <div class="hm-tile-top">
+        <span class="hm-tile-id">${escapeHtml(s.site_id)}</span>
+        ${isBlack
+          ? '<span class="hm-tile-status-icon hm-icon-blacklisted" title="Blacklisted"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 1 L11 10 H1 Z"/><line x1="6" y1="5" x2="6" y2="7.5"/><circle cx="6" cy="9" r="0.6" fill="currentColor" stroke="none"/></svg></span>'
+          : isCrit
+            ? '<span class="hm-tile-status-icon hm-icon-critical" title="Critical risk"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="6" cy="6" r="5"/><line x1="6" y1="4" x2="6" y2="6.5"/><circle cx="6" cy="8.5" r="0.6" fill="currentColor" stroke="none"/></svg></span>'
+            : ""
+        }
+      </div>
+      <div class="hm-tile-score">${s.risk_score}</div>
+      <div class="hm-tile-label">${label}</div>
+      ${trendHtml}
+      ${isBlack ? '<div class="hm-tile-blacklisted-badge">BLACKLISTED</div>' : ""}
+    </div>`;
+  }).join("");
+
+  // Keyboard navigation
+  container.querySelectorAll(".hm-tile").forEach((tile) => {
+    tile.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tile.click(); }
+    });
+  });
+
+  // Tooltip
+  if (tooltip) {
+    const sorted = _hmSorted(sites, _hmSort);
+    container.querySelectorAll(".hm-tile").forEach((tile) => {
+      const idx = parseInt(tile.dataset.idx, 10);
+      const s   = sorted[idx];
+      if (!s) return;
+
+      tile.addEventListener("mouseenter", (e) => {
+        const band  = _hmBandLabel(s.risk_score);
+        const trendLabel = s.trend === "WORSENING" ? "↑ Worsening"
+                         : s.trend === "IMPROVING" ? "↓ Improving"
+                         : "→ Stable";
+        tooltip.innerHTML = `
+          <div class="hm-tt-title">${escapeHtml(s.name || s.site_id)}</div>
+          <div class="hm-tt-grid">
+            <span class="hm-tt-key">Risk Score</span><span class="hm-tt-val hm-tt-score">${s.risk_score} / 100</span>
+            <span class="hm-tt-key">Status</span><span class="hm-tt-val">${band}</span>
+            <span class="hm-tt-key">Trend</span><span class="hm-tt-val">${trendLabel}</span>
+            ${s.location ? `<span class="hm-tt-key">Location</span><span class="hm-tt-val">${escapeHtml(s.location)}</span>` : ""}
+            ${s.is_blacklisted ? `<span class="hm-tt-key">Blacklist</span><span class="hm-tt-val hm-tt-blacklist">BLACKLISTED</span>` : ""}
+          </div>
+          <div class="hm-tt-footer">Click to investigate →</div>
+        `;
+        tooltip.style.display = "block";
+        _positionHmTooltip(e, tooltip);
+      });
+      tile.addEventListener("mousemove", (e) => _positionHmTooltip(e, tooltip));
+      tile.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+    });
+  }
+}
+
+function _positionHmTooltip(e, tooltip) {
+  const panel = tooltip.closest(".hm-panel") || document.body;
+  const pr    = panel.getBoundingClientRect();
+  const tw    = tooltip.offsetWidth  || 220;
+  const th    = tooltip.offsetHeight || 120;
+  let   x     = e.clientX - pr.left + 14;
+  let   y     = e.clientY - pr.top  - th / 2;
+  if (x + tw > pr.width  - 8) x = e.clientX - pr.left - tw - 14;
+  if (y < 4)                   y = 4;
+  if (y + th > pr.height - 4)  y = pr.height - th - 4;
+  tooltip.style.left = x + "px";
+  tooltip.style.top  = y + "px";
+}
+
+function setHeatmapSort(key) {
+  _hmSort = key;
+  document.querySelectorAll(".hm-sort-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.sort === key);
+  });
+  _renderHeatmapTiles(_hmSites);
+}
+
 async function loadSiteHeatmap() {
   try {
     const sites = await get("/api/dashboard/heatmap");
     const container = document.getElementById("site-heatmap");
     if (!container) return;
-    if (!sites.length) {
+    if (!sites || !sites.length) {
       container.innerHTML = '<div class="state-empty">No site data available.</div>';
       return;
     }
-    container.innerHTML = sites.map((s) => {
-      const cls = s.risk_level === "HIGH" ? "hm-high" : s.risk_level === "MEDIUM" ? "hm-medium" : "hm-low";
-      return `<div class="hm-cell ${cls}" onclick="loadPage('site-detail','${s.site_id}')" title="${escapeHtml(s.name || s.site_id)} — ${s.risk_level} (${s.risk_score}/100)">
-        <span class="hm-id">${s.site_id}</span>
-        <span class="hm-score">${s.risk_score}</span>
-      </div>`;
-    }).join("");
+    _hmSites = sites;
+    const countEl = document.getElementById("hm-site-count");
+    if (countEl) countEl.textContent = `${sites.length} site${sites.length !== 1 ? "s" : ""}`;
+    _renderHeatmapTiles(sites);
   } catch (err) {
     console.error("Heatmap failed:", err);
   }
