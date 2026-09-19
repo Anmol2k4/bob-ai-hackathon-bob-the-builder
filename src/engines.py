@@ -1,5 +1,5 @@
-﻿"""
-TrialGuard AI ΓÇö Protocol Deviation Engine, Severity Classifier, and Site Risk Engine.
+"""
+TrialGuard AI — Protocol Deviation Engine, Severity Classifier, and Site Risk Engine.
 
 IMPORTANT DISCLAIMER:
 Severity thresholds and risk scoring are prototype prioritization frameworks designed
@@ -11,9 +11,9 @@ from collections import Counter
 from datetime import date, datetime, timezone
 
 
-# ΓöÇΓöÇΓöÇ blacklist threshold ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── blacklist threshold ──────────────────────────────────────────────────
 
-# Configurable prototype threshold ΓÇö NOT an official FDA/ICH requirement.
+# Configurable prototype threshold — NOT an official FDA/ICH requirement.
 # Sites scoring at or above this value are automatically blacklisted.
 SITE_BLACKLIST_RISK_THRESHOLD = 90
 
@@ -26,11 +26,11 @@ def evaluate_blacklist(
     """
     Evaluate whether a site should be blacklisted based on its risk score.
 
-    Rules (all sticky ΓÇö NEVER auto-clear):
-      - score >= 90 AND site NOT already blacklisted  ΓåÆ blacklist with AUTOMATIC_RISK_THRESHOLD
-      - score >= 90 AND site already blacklisted       ΓåÆ return existing blacklist fields unchanged
-      - score <  90 AND site is blacklisted            ΓåÆ return existing blacklist fields unchanged
-      - score <  90 AND site NOT blacklisted           ΓåÆ return all-None fields
+    Rules (all sticky — NEVER auto-clear):
+      - score >= 90 AND site NOT already blacklisted  → blacklist with AUTOMATIC_RISK_THRESHOLD
+      - score >= 90 AND site already blacklisted       → return existing blacklist fields unchanged
+      - score <  90 AND site is blacklisted            → return existing blacklist fields unchanged
+      - score <  90 AND site NOT blacklisted           → return all-None fields
 
     Returns a dict of the 8 blacklist fields suitable for dict.update() on a site record.
     """
@@ -65,7 +65,7 @@ def evaluate_blacklist(
         }
     else:
         if already:
-            # Score dropped below threshold but blacklist is sticky ΓÇö preserve state
+            # Score dropped below threshold but blacklist is sticky — preserve state
             return {
                 "is_blacklisted": True,
                 "blacklist_reason": existing_site.get("blacklist_reason"),
@@ -89,7 +89,7 @@ def evaluate_blacklist(
         }
 
 
-# ΓöÇΓöÇΓöÇ severity classification ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── severity classification ──────────────────────────────────────────────────
 
 SEVERITY_THRESHOLDS = {
     "ADMINISTRATIVE": (0, 3),
@@ -159,7 +159,7 @@ def classify_severity(factors: dict[str, int]) -> dict:
     }
 
 
-# ΓöÇΓöÇΓöÇ deviation detection engine ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── deviation detection engine ───────────────────────────────────────────────
 
 # Expected visit numbers per protocol visit schedule
 _EXPECTED_VISIT_NUMBERS = {1, 2, 3, 4, 5}
@@ -177,14 +177,14 @@ def run_deviation_engine(
     Returns a list of detected deviations with full evidence.
 
     Deviation types detected:
-      R-001  ELIGIBILITY_VIOLATION    ΓÇö patient age outside 18-65
-      R-002  VISIT_OUTSIDE_WINDOW     ΓÇö visit 2 out of ┬▒2 day window
-      R-003  INCORRECT_DOSE           ΓÇö dose != 100 mg
-      R-004  PROHIBITED_MEDICATION    ΓÇö Drug X or Drug Y administered
-      R-005  MISSING_ASSESSMENT       ΓÇö required safety assessment absent
-      R-006  LATE_DATA_ENTRY          ΓÇö EDC entry > 48 h after visit
-      R-007  VISIT_OUTSIDE_WINDOW     ΓÇö visit 3 out of ┬▒2 day window
-      R-008  MISSED_VISIT             ΓÇö scheduled visit absent from records
+      R-001  ELIGIBILITY_VIOLATION    — patient age outside 18-65
+      R-002  VISIT_OUTSIDE_WINDOW     — visit 2 out of ±2 day window
+      R-003  INCORRECT_DOSE           — dose != 100 mg
+      R-004  PROHIBITED_MEDICATION    — Drug X or Drug Y administered
+      R-005  MISSING_ASSESSMENT       — required safety assessment absent
+      R-006  LATE_DATA_ENTRY          — EDC entry > 48 h after visit
+      R-007  VISIT_OUTSIDE_WINDOW     — visit 3 out of ±2 day window
+      R-008  MISSED_VISIT             — scheduled visit absent from records
     """
     if not protocols:
         return []
@@ -203,15 +203,15 @@ def run_deviation_engine(
             deviations.append(_make_deviation(
                 patient_id=pid, site_id=site_id,
                 dtype="ELIGIBILITY_VIOLATION",
-                description="Patient age outside protocol-defined eligibility window (18ΓÇô65 years)",
-                expected="Age 18ΓÇô65 years (per protocol rule R-001)",
+                description="Patient age outside protocol-defined eligibility window (18–65 years)",
+                expected="Age 18–65 years (per protocol rule R-001)",
                 actual=f"Age {age} years",
                 factors={"safety_impact": 3, "data_integrity": 4, "protocol_criticality": 4,
                          "participant_rights": 5, "magnitude": 2, "recurrence": 0},
                 rule_id="R-001", protocol_id=protocol.get("protocol_id", "TG-101"),
             ))
 
-        # Rule R-002: Visit window (visit 2 = Day 7 ┬▒ 2)
+        # Rule R-002: Visit window (visit 2 = Day 7 ± 2)
         visit_num = visit.get("visit_number", 1)
         scheduled = _parse_date(visit.get("scheduled_date"))
         actual_dt = _parse_date(visit.get("actual_date"))
@@ -221,8 +221,8 @@ def run_deviation_engine(
                 deviations.append(_make_deviation(
                     patient_id=pid, site_id=site_id,
                     dtype="VISIT_OUTSIDE_WINDOW",
-                    description=f"Visit {visit_num} occurred {diff} days outside allowed window (┬▒2 days)",
-                    expected=f"Visit {visit_num} within Day 7 ┬▒ 2 days of scheduled date",
+                    description=f"Visit {visit_num} occurred {diff} days outside allowed window (±2 days)",
+                    expected=f"Visit {visit_num} within Day 7 ± 2 days of scheduled date",
                     actual=f"Visit occurred {diff} days outside window",
                     factors={"safety_impact": 1, "data_integrity": 3, "protocol_criticality": 2,
                              "participant_rights": 1, "magnitude": min(diff // 2, 3), "recurrence": 0},
@@ -230,15 +230,15 @@ def run_deviation_engine(
                     detected_at=visit.get("actual_date"),
                 ))
 
-        # Rule R-007: Visit window (visit 3 = Day 14 ┬▒ 2)
+        # Rule R-007: Visit window (visit 3 = Day 14 ± 2)
         if visit_num == 3 and scheduled and actual_dt:
             diff = abs((actual_dt - scheduled).days)
             if diff > 2:
                 deviations.append(_make_deviation(
                     patient_id=pid, site_id=site_id,
                     dtype="VISIT_OUTSIDE_WINDOW",
-                    description=f"Visit {visit_num} occurred {diff} days outside allowed window (┬▒2 days)",
-                    expected=f"Visit {visit_num} within Day 14 ┬▒ 2 days of scheduled date",
+                    description=f"Visit {visit_num} occurred {diff} days outside allowed window (±2 days)",
+                    expected=f"Visit {visit_num} within Day 14 ± 2 days of scheduled date",
                     actual=f"Visit occurred {diff} days outside window",
                     factors={"safety_impact": 1, "data_integrity": 3, "protocol_criticality": 2,
                              "participant_rights": 1, "magnitude": min(diff // 2, 3), "recurrence": 0},
@@ -312,7 +312,7 @@ def run_deviation_engine(
                 rule_id="R-004", protocol_id=protocol.get("protocol_id", "TG-101"),
             ))
 
-    # Rule R-008: Missed visits ΓÇö detect patients whose visit records are incomplete
+    # Rule R-008: Missed visits — detect patients whose visit records are incomplete
     # A visit is missed when it is absent from the visit list entirely (not rescheduled within window).
     visits_by_patient: dict[str, set[int]] = {}
     for visit in visits:
@@ -330,7 +330,7 @@ def run_deviation_engine(
                 deviations.append(_make_deviation(
                     patient_id=pid, site_id=site_id,
                     dtype="MISSED_VISIT",
-                    description=f"Visit {vnum} not recorded for patient ΓÇö scheduled visit has no attendance record",
+                    description=f"Visit {vnum} not recorded for patient — scheduled visit has no attendance record",
                     expected=f"Visit {vnum} completed or rescheduled within protocol window (rule R-008)",
                     actual="Visit record absent",
                     factors={"safety_impact": 2, "data_integrity": 3, "protocol_criticality": 2,
@@ -388,7 +388,7 @@ def _make_deviation(
     }
 
 
-# ΓöÇΓöÇΓöÇ site risk engine ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── site risk engine ─────────────────────────────────────────────────────────
 
 def calculate_site_risk(
     site_id: str,
@@ -399,7 +399,7 @@ def calculate_site_risk(
     """
     Calculate a multi-factor site risk score using leading indicators.
 
-    Scoring factors (prototype ΓÇö not regulatory advice):
+    Scoring factors (prototype — not regulatory advice):
     1. Deviation frequency (relative to all sites)
     2. Major deviation count weighted heavily
     3. Increasing trend (recent period vs older)
@@ -409,7 +409,7 @@ def calculate_site_risk(
     7. Data-entry delay frequency
     8. Protocol compliance percentage
 
-    Returns score 0ΓÇô100, risk_level, trend, leading_indicators, risk_drivers.
+    Returns score 0–100, risk_level, trend, leading_indicators, risk_drivers.
     risk_history: optional list of {site_id, period, risk_score} snapshots for slope-based prediction.
     """
     site_devs = [d for d in deviations if d["site_id"] == site_id]

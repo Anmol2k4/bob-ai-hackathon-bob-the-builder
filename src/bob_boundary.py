@@ -14,7 +14,7 @@ from typing import Callable, Any
 from models import User
 
 
-# ─── tool contract registry ───────────────────────────────────────────────────
+# ÄÄÄ tool contract registry ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 TOOL_REGISTRY = {
     "get_trial_overview": {
@@ -151,7 +151,7 @@ def tool_contracts() -> list[dict]:
     ]
 
 
-# ─── tool implementations ─────────────────────────────────────────────────────
+# ÄÄÄ tool implementations ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
     """Build a dictionary of callable Bob tools scoped to the current session."""
@@ -349,7 +349,7 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
             except (KeyError, ValueError, TypeError):
                 pass
 
-        # R-002 / R-007: Visit windows (visit 2 = Day 7 ± 2, visit 3 = Day 14 ± 2)
+        # R-002 / R-007: Visit windows (visit 2 = Day 7 ñ 2, visit 3 = Day 14 ñ 2)
         rules_checked.extend(["R-002", "R-007"])
         window_rules = {2: ("R-002", 7, 2), 3: ("R-007", 14, 2)}
         from datetime import date as _date
@@ -365,7 +365,7 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
                     if diff > tolerance:
                         issues.append({
                             "rule": rule_id,
-                            "finding": f"Visit {vnum} occurred {diff} days outside ±{tolerance}-day window",
+                            "finding": f"Visit {vnum} occurred {diff} days outside ñ{tolerance}-day window",
                             "severity": "MINOR",
                         })
                 except (KeyError, ValueError, TypeError):
@@ -595,7 +595,7 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
     }
 
 
-# ─── Bob provider boundary ────────────────────────────────────────────────────
+# ÄÄÄ Bob provider boundary ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 class LocalDemoBobProvider:
     """
@@ -611,7 +611,7 @@ class LocalDemoBobProvider:
     """
     name = "DEMO BOB ADAPTER (not IBM Bob)"
 
-    # ── Intent categories ────────────────────────────────────────────────────
+    # ÄÄ Intent categories ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
     # Each entry: (required_context_keywords, trigger_keywords, intent)
     # required_context_keywords: at least one must be present (trial domain signal)
     # trigger_keywords: at least one must be present (action signal)
@@ -620,7 +620,7 @@ class LocalDemoBobProvider:
     # UNSUPPORTED fires when NO intent matches.
 
     _INTENT_RULES = [
-        # ── More-specific rules first ──────────────────────────────────────
+        # ÄÄ More-specific rules first ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         # NOTE: COMPARE_SITES is NOT in this list.  It is handled entirely by
         # the explicit two-site shortcut in answer() (step 2b) before
         # _classify_intent() is ever called.  Having it here caused false
@@ -811,12 +811,12 @@ class LocalDemoBobProvider:
         import re
         lowered = question.lower().strip()
 
-        # ── 1. Extract site ID from message ──────────────────────────────────
+        # ÄÄ 1. Extract site ID from message ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         site_matches = re.findall(r'\bS\d{3}\b', question)
         # Use site from message, or the user's own assigned site (never default to S037)
         target_site = site_matches[0] if site_matches else user.site_id
 
-        # ── 2. Permission check: site coordinator cross-site access ──────────
+        # ÄÄ 2. Permission check: site coordinator cross-site access ÄÄÄÄÄÄÄÄÄÄ
         if user.role == "SITE_COORDINATOR":
             for mentioned in site_matches:
                 if mentioned != user.site_id:
@@ -831,7 +831,7 @@ class LocalDemoBobProvider:
                         "tool_used": None,
                     }
 
-        # ── 2b. COMPARE_SITES shortcut — two site IDs present ────────────────
+        # ÄÄ 2b. COMPARE_SITES shortcut — two site IDs present ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         # Detect before normal intent classification so "S001 vs S032" is never
         # reduced to a single-site report.
         if len(site_matches) >= 2:
@@ -842,7 +842,7 @@ class LocalDemoBobProvider:
                 site_a, site_b = site_matches[0], site_matches[1]
                 return self._handle_compare(site_a, site_b, tools, user)
 
-        # ── 3. Classify intent ───────────────────────────────────────────────
+        # ÄÄ 3. Classify intent ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         intent = self._classify_intent(lowered, has_site=bool(site_matches))
 
         if intent is None:
@@ -857,7 +857,7 @@ class LocalDemoBobProvider:
 
         tool_name = self._tool_for_intent(intent)
 
-        # ── 4. Role-based tool downgrade ─────────────────────────────────────
+        # ÄÄ 4. Role-based tool downgrade ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         if tool_name in ("generate_capa", "recommend_site_actions") and user.role == "AUDITOR":
             # Auditor cannot generate CAPAs or recommendations — show risk explanation instead
             if target_site:
@@ -897,7 +897,7 @@ class LocalDemoBobProvider:
                     "tool_used": None,
                 }
 
-        # ── 5. For site-scoped tools, require a site ID ──────────────────────
+        # ÄÄ 5. For site-scoped tools, require a site ID ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         _site_scoped = {
             "get_site_risk", "explain_site_risk", "list_site_deviations",
             "get_site_trends", "recommend_site_actions", "generate_capa",
@@ -915,7 +915,7 @@ class LocalDemoBobProvider:
                 "tool_used": tool_name,
             }
 
-        # ── 6. Call tool ──────────────────────────────────────────────────────
+        # ÄÄ 6. Call tool ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
         try:
             fn = tools.get(tool_name)
             if not fn:
@@ -1327,7 +1327,7 @@ class LocalDemoBobProvider:
         return "I have retrieved the requested information from the trial database."
 
 
-# ─── Real MCP Bob Provider ────────────────────────────────────────────────────
+# ÄÄÄ Real MCP Bob Provider ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
 
 class MCPBobProvider:
     """

@@ -1,5 +1,5 @@
-﻿"""
-TrialGuard AI ΓÇö HTTP Server
+"""
+TrialGuard AI — HTTP Server
 Python standard-library HTTP server exposing a REST JSON API.
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ from engines import classify_severity, calculate_site_risk, run_deviation_engine
 from bob_boundary import MCPBobProvider, tool_contracts, build_bob_tools
 
 
-# ΓöÇΓöÇΓöÇ session store ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── session store ────────────────────────────────────────────────────────────
 _sessions: dict[str, dict] = {}
 
 
@@ -47,7 +47,7 @@ def _delete_session(token: str) -> None:
     _sessions.pop(token, None)
 
 
-# ΓöÇΓöÇΓöÇ repository singleton ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── repository singleton ──────────────────────────────────────────────────────
 _repo = create_repository()
 if not _repo.all("users"):
     print("No data found - seeding demo data automatically...")
@@ -57,9 +57,9 @@ if not _repo.all("users"):
 _bob_provider = MCPBobProvider(_repo, {"role": "STUDY_MANAGER", "user_id": "server", "site_id": None})
 
 
-# ΓöÇΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── helpers ──────────────────────────────────────────────────────────────────
 def _json(obj: Any) -> bytes:
-    return json.dumps(obj, default=str).encode()
+    return json.dumps(obj, default=str, ensure_ascii=False).encode("utf-8")
 
 
 def _error(code: int, message: str) -> tuple[int, bytes]:
@@ -108,7 +108,7 @@ def _site_scope(session: dict, site_id: str) -> bool:
     return False
 
 
-# ΓöÇΓöÇΓöÇ handler ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── handler ──────────────────────────────────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):  # suppress default stdout noise
@@ -133,7 +133,7 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return {}
 
-    def _send(self, code: int, body: bytes, content_type: str = "application/json") -> None:
+    def _send(self, code: int, body: bytes, content_type: str = "application/json; charset=utf-8") -> None:
         try:
             self.send_response(code)
             self.send_header("Content-Type", content_type)
@@ -143,15 +143,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-            pass  # client disconnected before we finished ΓÇö not a server error
+            pass  # client disconnected before we finished — not a server error
 
     def _send_json(self, code: int, obj: Any) -> None:
-        self._send(code, _json(obj))
+        self._send(code, _json(obj), "application/json; charset=utf-8")
 
     def _send_error(self, code: int, message: str) -> None:
         self._send_json(code, {"error": message, "status": code})
 
-    # ΓöÇΓöÇ routing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── routing ───────────────────────────────────────────────────────────────
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -320,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_error(404, f"Endpoint not found: {method} {path}")
 
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-            pass  # client closed the connection mid-flight ΓÇö ignore silently
+            pass  # client closed the connection mid-flight — ignore silently
         except Exception:
             tb = traceback.format_exc()
             print(f"[ERROR] {method} {path}\n{tb}")
@@ -329,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
                 pass  # connection already gone, can't send error response
 
-    # ΓöÇΓöÇ static file serving ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── static file serving ───────────────────────────────────────────────────
 
     def _serve_static(self, path: str) -> None:
         static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -346,13 +346,19 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         ext = os.path.splitext(file_path)[1]
-        mime = {".html": "text/html", ".css": "text/css", ".js": "application/javascript",
-                ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon"}.get(ext, "application/octet-stream")
+        mime = {
+            ".html": "text/html; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+            ".json": "application/json; charset=utf-8",
+            ".png": "image/png",
+            ".ico": "image/x-icon",
+        }.get(ext, "application/octet-stream")
         with open(file_path, "rb") as f:
             data = f.read()
         self._send(200, data, mime)
 
-    # ΓöÇΓöÇ auth ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── auth ──────────────────────────────────────────────────────────────────
 
     def _login(self) -> None:
         body = self._body()
@@ -368,7 +374,7 @@ class Handler(BaseHTTPRequestHandler):
         token = _new_session(user)
         _audit(user["user_id"], "LOGIN", "session", user["user_id"])
         self.send_response(200)
-        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Set-Cookie", f"tg_session={token}; HttpOnly; Path=/; SameSite=Strict")
         self.send_header("Access-Control-Allow-Origin", "*")
         body_bytes = _json({"token": token, "user": {k: v for k, v in user.items() if k != "password_hash"}})
@@ -385,9 +391,9 @@ class Handler(BaseHTTPRequestHandler):
             _audit(sess["user_id"], "LOGOUT", "session", sess["user_id"])
         self._send_json(200, {"status": "logged_out"})
 
-    # ΓöÇΓöÇ dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── dashboard ─────────────────────────────────────────────────────────────
 
-    # ΓöÇΓöÇ medicines & trials ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── medicines & trials ────────────────────────────────────────────────────
 
     def _list_medicines(self, sess: dict) -> None:
         medicines = _repo.all("medicines")
@@ -400,7 +406,7 @@ class Handler(BaseHTTPRequestHandler):
             trials = [t for t in trials if t.get("medicine_id") == medicine_id]
         self._send_json(200, trials)
 
-    # ΓöÇΓöÇ dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── dashboard ─────────────────────────────────────────────────────────────
 
     def _dashboard_summary(self, sess: dict, qs: dict) -> None:
         trial_id = (qs.get("trial_id") or [None])[0]
@@ -532,7 +538,7 @@ class Handler(BaseHTTPRequestHandler):
             site_devs = [d for d in deviations if d["site_id"] == sid]
             type_counts = dict(Counter(d["type"] for d in site_devs))
 
-            # Dominant deviation type ΓåÆ human-readable primary signal
+            # Dominant deviation type → human-readable primary signal
             if type_counts:
                 dominant_type = max(type_counts, key=type_counts.get)
                 type_label = dominant_type.replace("_", " ").title()
@@ -545,7 +551,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 primary_signal = "Elevated deviation frequency"
 
-            # Recent deviation count (last 30 days of data ΓÇö use max date as reference)
+            # Recent deviation count (last 30 days of data — use max date as reference)
             all_dates = [d.get("detected_at") or "" for d in site_devs if d.get("detected_at")]
             if all_dates:
                 max_date_str = max(all_dates)
@@ -647,7 +653,7 @@ class Handler(BaseHTTPRequestHandler):
 
         from collections import Counter
 
-        # Pre-group deviations by site once ΓÇö never call find_many in a loop
+        # Pre-group deviations by site once — never call find_many in a loop
         all_devs = _repo.all("deviations")
         devs_by_site: dict[str, list] = {}
         for d in all_devs:
@@ -676,7 +682,7 @@ class Handler(BaseHTTPRequestHandler):
             r = risk_by_site.get(sid, {})
             s = site_map.get(sid, {})
 
-            # Primary signal ΓÇö use pre-grouped deviations
+            # Primary signal — use pre-grouped deviations
             site_devs = devs_by_site.get(sid, [])
             if site_devs:
                 type_counts = Counter(d["type"] for d in site_devs)
@@ -705,7 +711,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(200, {"emerging_sites": emerging[:5]})
 
 
-    # ΓöÇΓöÇ protocol ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── protocol ──────────────────────────────────────────────────────────────
 
     def _get_protocol(self, sess: dict) -> None:
         protocols = _repo.all("protocols")
@@ -726,7 +732,7 @@ class Handler(BaseHTTPRequestHandler):
         visits = _repo.all("visits")
         total_patients = max(len(patients), 1)
         total_visits = max(len(visits), 1)
-        # Expected visits = patients ├ù 5 visits (for missed visit calc)
+        # Expected visits = patients × 5 visits (for missed visit calc)
         expected_visits = max(total_patients * 5, 1)
         # Visit 2 and 3 are the windowed ones
         windowed_visits = max(sum(1 for v in visits if v.get("visit_number") in (2, 3)), 1)
@@ -771,7 +777,7 @@ class Handler(BaseHTTPRequestHandler):
             "total_violations": len(deviations),
         })
 
-    # ΓöÇΓöÇ sites ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── sites ─────────────────────────────────────────────────────────────────
 
     def _list_sites(self, sess: dict, qs: dict) -> None:
         trial_id = (qs.get("trial_id") or [None])[0]
@@ -1116,7 +1122,7 @@ class Handler(BaseHTTPRequestHandler):
         result = analyze_deviation_pattern(site_id, devs, patients)
         self._send_json(200, result)
 
-    # ΓöÇΓöÇ deviations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── deviations ────────────────────────────────────────────────────────────
 
     def _list_deviations(self, sess: dict, qs: dict) -> None:
         devs = _repo.all("deviations")
@@ -1198,7 +1204,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "ANALYZE_DEVIATIONS", "deviations", "", {"new_count": len(new_devs)})
         self._send_json(200, {"analyzed": len(new_devs), "deviations": new_devs[:20]})
 
-    # ΓöÇΓöÇ capa ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── capa ──────────────────────────────────────────────────────────────────
 
     def _list_capa(self, sess: dict) -> None:
         records = _repo.all("capa_records")
@@ -1271,7 +1277,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "UPDATE_CAPA", "capa_records", capa_id, {"changes": list(changes.keys())})
         self._send_json(200, updated)
 
-    # ΓöÇΓöÇ reports ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── reports ───────────────────────────────────────────────────────────────
 
     def _site_report(self, sess: dict, site_id: str) -> None:
         if not _site_scope(sess, site_id):
@@ -1338,7 +1344,7 @@ class Handler(BaseHTTPRequestHandler):
             "disclaimer": "Synthetic data. Not for clinical or regulatory use.",
         })
 
-    # ΓöÇΓöÇ audit ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── audit ─────────────────────────────────────────────────────────────────
 
     def _list_audit(self, sess: dict) -> None:
         if sess["role"] not in ("STUDY_MANAGER", "AUDITOR", "SYSTEM_ADMIN"):
@@ -1348,7 +1354,7 @@ class Handler(BaseHTTPRequestHandler):
         events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
         self._send_json(200, events[:500])
 
-    # ΓöÇΓöÇ users ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── users ─────────────────────────────────────────────────────────────────
 
     def _list_users(self, sess: dict) -> None:
         if sess["role"] != "SYSTEM_ADMIN":
@@ -1358,7 +1364,7 @@ class Handler(BaseHTTPRequestHandler):
         safe = [{k: v for k, v in u.items() if k != "password_hash"} for u in users]
         self._send_json(200, safe)
 
-    # ΓöÇΓöÇ risk recalculate ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── risk recalculate ──────────────────────────────────────────────────────
 
     def _recalculate_risk(self, sess: dict) -> None:
         if sess["role"] not in ("STUDY_MANAGER", "SYSTEM_ADMIN"):
@@ -1376,7 +1382,7 @@ class Handler(BaseHTTPRequestHandler):
                 _repo.update("risk_scores", "site_id", sid, new_risk)
             else:
                 _repo.insert("risk_scores", new_risk)
-            # ΓöÇΓöÇ Automatic blacklist evaluation on risk recalculation ΓöÇΓöÇ
+            # ── Automatic blacklist evaluation on risk recalculation ──
             score = new_risk["current_score"]
             was_blacklisted = site.get("is_blacklisted", False)
             bl = evaluate_blacklist(sid, score, site)
@@ -1392,7 +1398,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "RISK_RECALCULATED", "risk_scores", "all")
         self._send_json(200, {"status": "recalculated", "sites": len(sites)})
 
-    # ΓöÇΓöÇ bob ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── bob ───────────────────────────────────────────────────────────────────
 
     def _bob_tool(self, sess: dict) -> None:
         body = self._body()
@@ -1437,7 +1443,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "BOB_QUESTION", "bob", "", {"question": question[:200]})
         self._send_json(200, result)
 
-    # ΓöÇΓöÇ search ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── search ────────────────────────────────────────────────────────────────
 
     def _search(self, sess: dict, qs: dict) -> None:
         q = (qs.get("q") or [""])[0].strip().lower()
@@ -1455,7 +1461,7 @@ class Handler(BaseHTTPRequestHandler):
                 if q in s.get("site_id", "").lower() or q in s.get("name", "").lower() or q in s.get("location", "").lower():
                     sites_results.append({
                         "id": s["site_id"],
-                        "label": s["site_id"] + " ΓÇö " + s.get("name", ""),
+                        "label": s["site_id"] + " — " + s.get("name", ""),
                         "sublabel": s.get("location", ""),
                         "type": "site",
                     })
@@ -1513,7 +1519,7 @@ class Handler(BaseHTTPRequestHandler):
             if q in rule.get("rule_id", "").lower() or q in rule.get("name", "").lower() or q in rule.get("domain", "").lower():
                 rules_results.append({
                     "id": rule["rule_id"],
-                    "label": rule["rule_id"] + " ΓÇö " + rule.get("name", ""),
+                    "label": rule["rule_id"] + " — " + rule.get("name", ""),
                     "sublabel": rule.get("domain", ""),
                     "type": "rule",
                 })
@@ -1528,7 +1534,7 @@ class Handler(BaseHTTPRequestHandler):
             "rules": rules_results,
         })
 
-    # ΓöÇΓöÇ notifications ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── notifications ─────────────────────────────────────────────────────────
 
     def _notifications(self, sess: dict) -> None:
         risk_scores = _repo.all("risk_scores")
@@ -1605,7 +1611,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 
-# ΓöÇΓöÇΓöÇ entry point ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+# ─── entry point ──────────────────────────────────────────────────────────────
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle each request in a separate thread so parallel API calls don't queue."""

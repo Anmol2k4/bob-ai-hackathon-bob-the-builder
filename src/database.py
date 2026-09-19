@@ -64,7 +64,7 @@ class MongoRepository(MemoryRepository):
         )
         self.database = self.client[settings.mongodb_database]
         self.client.admin.command("ping")
-        # ── Warm the in-memory cache from Atlas (one batch read per collection) ──
+        # ÄÄ Warm the in-memory cache from Atlas (one batch read per collection) ÄÄ
         self._warm_cache()
 
     def _warm_cache(self) -> None:
@@ -90,7 +90,7 @@ class MongoRepository(MemoryRepository):
         # Update in-memory state
         self.state = state
 
-    # ── Reads: served entirely from in-memory cache (MemoryRepository) ──
+    # ÄÄ Reads: served entirely from in-memory cache (MemoryRepository) ÄÄ
     # all(), find_one(), find_many() are inherited unchanged — no Atlas calls.
 
     def insert(self, collection: str, item: dict[str, Any]) -> dict[str, Any]:
