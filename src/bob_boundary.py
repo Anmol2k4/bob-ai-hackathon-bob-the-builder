@@ -113,6 +113,24 @@ TOOL_REGISTRY = {
         "output_schema": {"type": "object"},
         "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
     },
+    "get_blacklisted_sites": {
+        "description": "Return all currently blacklisted sites with their blacklist metadata. RBAC enforced: coordinators only see their own site if blacklisted.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
+    "get_site_blacklist_status": {
+        "description": "Return the current blacklist status and metadata for a specific site.",
+        "input_schema": {"type": "object", "properties": {"site_id": {"type": "string"}}, "required": ["site_id"]},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
+    "get_site_blacklist_history": {
+        "description": "Return audit events for SITE_BLACKLISTED and SITE_BLACKLIST_CLEARED actions for a site, sorted by timestamp.",
+        "input_schema": {"type": "object", "properties": {"site_id": {"type": "string"}}, "required": ["site_id"]},
+        "output_schema": {"type": "object"},
+        "roles": ["STUDY_MANAGER", "SITE_COORDINATOR", "AUDITOR", "SYSTEM_ADMIN"],
+    },
 }
 
 
@@ -493,6 +511,67 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
             "sources": ["Deviation repository", "Patient repository"],
         }
 
+    def get_blacklisted_sites(**_) -> dict:
+        _check_role(TOOL_REGISTRY["get_blacklisted_sites"]["roles"])
+        role = sess["role"]
+        sites = repo.all("sites")
+        if role == "SITE_COORDINATOR":
+            coord_site_id = sess.get("site_id")
+            sites = [s for s in sites if s.get("site_id") == coord_site_id]
+        blacklisted = [s for s in sites if s.get("is_blacklisted")]
+        return {
+            "blacklisted_count": len(blacklisted),
+            "blacklisted_sites": [
+                {
+                    "site_id": s["site_id"],
+                    "name": s.get("name"),
+                    "trial_id": s.get("trial_id"),
+                    "is_blacklisted": s["is_blacklisted"],
+                    "blacklist_reason": s.get("blacklist_reason"),
+                    "blacklisted_at": s.get("blacklisted_at"),
+                    "blacklisted_by": s.get("blacklisted_by"),
+                    "blacklist_source": s.get("blacklist_source"),
+                }
+                for s in blacklisted
+            ],
+            "sources": ["Site repository"],
+        }
+
+    def get_site_blacklist_status(site_id: str, **_) -> dict:
+        _check_role(TOOL_REGISTRY["get_site_blacklist_status"]["roles"])
+        _check_site_scope(site_id)
+        site = repo.find_one("sites", "site_id", site_id)
+        if not site:
+            raise ValueError(f"Site {site_id} not found.")
+        return {
+            "site_id": site_id,
+            "is_blacklisted": site.get("is_blacklisted", False),
+            "blacklist_reason": site.get("blacklist_reason"),
+            "blacklisted_at": site.get("blacklisted_at"),
+            "blacklisted_by": site.get("blacklisted_by"),
+            "blacklist_source": site.get("blacklist_source"),
+            "blacklist_cleared_by": site.get("blacklist_cleared_by"),
+            "blacklist_cleared_at": site.get("blacklist_cleared_at"),
+            "sources": ["Site repository"],
+        }
+
+    def get_site_blacklist_history(site_id: str, **_) -> dict:
+        _check_role(TOOL_REGISTRY["get_site_blacklist_history"]["roles"])
+        _check_site_scope(site_id)
+        audit_events = repo.all("audit_events")
+        blacklist_actions = {"SITE_BLACKLISTED", "SITE_BLACKLIST_CLEARED"}
+        events = [
+            e for e in audit_events
+            if e.get("action") in blacklist_actions and e.get("resource_id") == site_id
+        ]
+        events.sort(key=lambda e: e.get("timestamp", ""))
+        return {
+            "site_id": site_id,
+            "event_count": len(events),
+            "events": events,
+            "sources": ["Audit event repository"],
+        }
+
     return {
         "get_trial_overview": get_trial_overview,
         "list_high_risk_sites": list_high_risk_sites,
@@ -510,6 +589,9 @@ def build_bob_tools(repo: Any, sess: dict) -> dict[str, Callable]:
         "get_site_risk_history": get_site_risk_history,
         "analyze_deviation_pattern": analyze_deviation_pattern,
         "get_affected_patients": get_affected_patients,
+        "get_blacklisted_sites": get_blacklisted_sites,
+        "get_site_blacklist_status": get_site_blacklist_status,
+        "get_site_blacklist_history": get_site_blacklist_history,
     }
 
 

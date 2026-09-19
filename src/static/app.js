@@ -1,19 +1,19 @@
-/**
- * TrialGuard AI — Frontend Application
+﻿/**
+ * TrialGuard AI ΓÇö Frontend Application
  * Single-page application in vanilla JavaScript.
- * All data fetched from the server-side API — no hardcoded values.
+ * All data fetched from the server-side API ΓÇö no hardcoded values.
  */
 
 "use strict";
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ State ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 let _session = null;
 let _charts = {};
 let _currentContext = null; // { type: 'site'|'deviation'|'capa', id: string, label: string }
 let _notifications = [];
 let _allAuditEvents = [];
 
-// ── Global trial context ────────────────────────────────────────────────────
+// ΓöÇΓöÇ Global trial context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Persisted across page navigations; null = "all trials"
 let _selectedTrialId = null;
 let _selectedMedicineId = null;
@@ -33,7 +33,7 @@ function _withTrial(path) {
   return path + sep + "trial_id=" + encodeURIComponent(_selectedTrialId);
 }
 
-// ── API layer ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ API layer ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function api(method, path, body) {
   const token = localStorage.getItem("tg_token");
   // Auto-inject trial_id for GET requests to scoped endpoints
@@ -54,7 +54,7 @@ const get = (p) => api("GET", p);
 const post = (p, b) => api("POST", p, b);
 const patch = (p, b) => api("PATCH", p, b);
 
-// ── Auth ───────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Auth ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 document.getElementById("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = document.getElementById("email").value.trim();
@@ -98,7 +98,7 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
   document.getElementById("password").value = "";
 });
 
-// ── App shell ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ App shell ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function showApp() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app").style.display = "flex";
@@ -130,7 +130,7 @@ function showApp() {
   loadNotifications();
 }
 
-// ── Trial / Medicine Selector ───────────────────────────────────────────────
+// ΓöÇΓöÇ Trial / Medicine Selector ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function initTrialSelector() {
   try {
     [_allMedicines, _allTrials] = await Promise.all([
@@ -138,7 +138,7 @@ async function initTrialSelector() {
       get("/api/trials"),
     ]);
   } catch {
-    return; // non-fatal — selector just stays empty
+    return; // non-fatal ΓÇö selector just stays empty
   }
 
   const medSel = document.getElementById("medicine-select");
@@ -149,7 +149,7 @@ async function initTrialSelector() {
   _allMedicines.forEach((m) => {
     const opt = document.createElement("option");
     opt.value = m.medicine_id;
-    opt.textContent = m.medicine_code + " – " + m.medicine_name.split(" (")[0];
+    opt.textContent = m.medicine_code + " ΓÇô " + m.medicine_name.split(" (")[0];
     medSel.appendChild(opt);
   });
 
@@ -162,7 +162,7 @@ async function initTrialSelector() {
     filtered.forEach((t) => {
       const opt = document.createElement("option");
       opt.value = t.trial_id;
-      opt.textContent = t.trial_code + " · " + t.trial_name;
+      opt.textContent = t.trial_code + " ┬╖ " + t.trial_name;
       trialSel.appendChild(opt);
     });
   }
@@ -202,7 +202,7 @@ function _currentPage() {
   return active ? active.id.replace("page-", "") : "dashboard";
 }
 
-// ── Navigation ─────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Navigation ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function setupNav() {
   document.querySelectorAll(".nav-item[data-page]").forEach((el) => {
     el.addEventListener("click", (e) => {
@@ -264,7 +264,7 @@ function loadPage(page, params) {
 }
 window.loadPage = loadPage;
 
-// ── Dashboard ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadDashboard() {
   try {
     const [summary, charts] = await Promise.all([
@@ -281,6 +281,7 @@ async function loadDashboard() {
       loadDashboardAttention(),
       loadSiteHeatmap(),
       loadEmergingSites(),
+      loadBlacklistPanel(),
     ]);
     // Show notification badge
     if (summary.high_risk_sites > 0) {
@@ -298,21 +299,21 @@ function renderKpis(s) {
     { label: "Total Sites", value: s.total_sites, cls: "kpi-info", sub: "clinical sites enrolled" },
     { label: "Total Patients", value: s.total_patients, cls: "kpi-info", sub: "synthetic records only" },
     { label: "Total Deviations", value: s.total_deviations, cls: "kpi-warn", sub: "all protocol deviations" },
-    { label: "Major Deviations", value: s.major_deviations, cls: "kpi-danger", sub: "severity score ≥10" },
-    { label: "Minor Deviations", value: s.minor_deviations, cls: "kpi-warn", sub: "severity score 4–9" },
-    { label: "Admin. Deviations", value: s.admin_deviations, cls: "kpi-info", sub: "severity score 0–3" },
-    { label: "High-Risk Sites", value: s.high_risk_sites, cls: "kpi-danger", sub: "risk score ≥ 65" },
+    { label: "Major Deviations", value: s.major_deviations, cls: "kpi-danger", sub: "severity score ΓëÑ10" },
+    { label: "Minor Deviations", value: s.minor_deviations, cls: "kpi-warn", sub: "severity score 4ΓÇô9" },
+    { label: "Admin. Deviations", value: s.admin_deviations, cls: "kpi-info", sub: "severity score 0ΓÇô3" },
+    { label: "High-Risk Sites", value: s.high_risk_sites, cls: "kpi-danger", sub: "risk score ΓëÑ 65" },
     { label: "Open CAPAs", value: s.open_capas, cls: "kpi-warn", sub: "awaiting action" },
   ];
   document.getElementById("kpi-grid").innerHTML = cards
     .map((c) => `<div class="kpi-card ${c.cls}">
       <div class="kpi-card-label">${c.label}</div>
-      <div class="kpi-card-value">${c.value ?? "—"}</div>
+      <div class="kpi-card-value">${c.value ?? "ΓÇö"}</div>
       <div class="kpi-card-sub">${c.sub}</div>
     </div>`)
     .join("");
   const subtitle = document.querySelector("#page-dashboard .page-subtitle");
-  if (subtitle) subtitle.innerHTML = `Trial risk overview · <span class="data-through">Synthetic data · Data through 18 Sep 2026</span>`;
+  if (subtitle) subtitle.innerHTML = `Trial risk overview ┬╖ <span class="data-through">Synthetic data ┬╖ Data through 18 Sep 2026</span>`;
 }
 
 function renderHighRiskTable(sites) {
@@ -427,7 +428,7 @@ async function loadRecentDeviations() {
     <td>${d.patient_id}</td>
     <td>${(d.type || "").replace(/_/g, " ")}</td>
     <td><span class="badge badge-${(d.severity || "").toLowerCase()}">${d.severity}</span></td>
-    <td>${d.detected_at || "—"}</td>
+    <td>${d.detected_at || "ΓÇö"}</td>
     <td><span class="badge badge-${d.status}">${d.status}</span></td>
     <td><button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${d.deviation_id}')">View</button></td>
   </tr>`).join("");
@@ -455,7 +456,7 @@ async function loadProtocolCompliance() {
   } catch {}
 }
 
-// ── Protocol ────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Protocol ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadProtocol() {
   try {
     const protocol = await get("/api/protocol");
@@ -502,7 +503,7 @@ async function loadProtocol() {
       <div class="visit-item">
         <div class="visit-num">VISIT ${v.visit_number}</div>
         <div class="visit-label">${v.label}</div>
-        <div class="visit-window">Window: ±${v.window_tolerance} days</div>
+        <div class="visit-window">Window: ┬▒${v.window_tolerance} days</div>
       </div>
     `).join("");
   } catch (err) {
@@ -510,7 +511,7 @@ async function loadProtocol() {
   }
 }
 
-// ── Sites ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Sites ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 let _allSites = [];
 
 async function loadSites() {
@@ -577,7 +578,7 @@ function applyFilters() {
   renderSitesTable(filtered);
 }
 
-// ── Site Investigation Workspace ───────────────────────────────────────────
+// ΓöÇΓöÇ Site Investigation Workspace ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadSiteDetail(siteId) {
   if (!siteId) return;
   const [site, risk, devs, patients, investigation] = await Promise.all([
@@ -588,14 +589,38 @@ async function loadSiteDetail(siteId) {
     get(`/api/sites/${siteId}/investigation`).catch(() => null),
   ]);
 
+  // Build blacklist status banner if site is blacklisted
+  const blBanner = site.is_blacklisted ? `
+    <div class="site-blacklist-header" id="site-bl-header-${siteId}">
+      <div class="sbh-title">
+        <span class="blacklist-badge">&#128308; BLACKLISTED</span>
+        <strong style="color:#7c2d12">Write access restricted</strong>
+      </div>
+      <div class="sbh-reason"><strong>Reason:</strong> ${escapeHtml(site.blacklist_reason || "No reason provided")}</div>
+      <div class="sbh-meta">
+        Source: <strong>${_formatBlacklistSource(site.blacklist_source)}</strong>
+        &nbsp;&#183;&nbsp; Blacklisted at: <strong>${site.blacklisted_at ? new Date(site.blacklisted_at).toLocaleString() : "&#8212;"}</strong>
+        &nbsp;&#183;&nbsp; By: <strong>${escapeHtml(site.blacklisted_by || "&#8212;")}</strong>
+      </div>
+      <div class="sbh-actions">
+        ${_session && ["STUDY_MANAGER","SYSTEM_ADMIN"].includes(_session.role) ? `<button class="btn btn-sm btn-clear-blacklist" onclick="openClearBlacklistModal('${siteId}','${escapeHtml(site.name)}',${risk.current_score||0},'${escapeHtml(site.blacklist_reason||'')}')">&#10003; Clear Blacklist</button>` : ""}
+      </div>
+    </div>
+  ` : `
+    <div id="site-bl-header-${siteId}">
+      ${_session && ["STUDY_MANAGER","SYSTEM_ADMIN"].includes(_session.role) ? `<div style="margin-bottom:12px"><button class="btn btn-sm btn-blacklist" onclick="openBlacklistModal('${siteId}','${escapeHtml(site.name)}',${risk.current_score||0})">&#128308; Blacklist Site</button></div>` : ""}
+    </div>
+  `;
+
   document.getElementById("site-detail-header").innerHTML = `
+    ${blBanner}
     <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div>
         <h2 style="margin:0">${site.name}</h2>
-        <div style="color:var(--text-muted);font-size:13px">${site.site_id} · ${site.location} · ${site.investigator}</div>
+        <div style="color:var(--text-muted);font-size:13px">${site.site_id} ┬╖ ${site.location} ┬╖ ${site.investigator}</div>
       </div>
       <span class="badge badge-${risk.risk_level}">${risk.risk_level}</span>
-      <button class="btn btn-sm btn-secondary" onclick="loadPage('bob')">🤖 Ask IBM Bob</button>
+      <button class="btn btn-sm btn-secondary" onclick="loadPage('bob')">≡ƒñû Ask IBM Bob</button>
     </div>
   `;
 
@@ -619,7 +644,7 @@ async function loadSiteDetail(siteId) {
             <span class="badge badge-${risk.trend}">${risk.trend}</span>
           </div>
           <div class="predicted-score">Predicted next period: <strong>${risk.predicted_score}/100</strong></div>
-          ${risk.trend === "WORSENING" ? `<div style="color:var(--risk-high);font-size:12px;margin-top:6px">⚠ Site ${siteId} is projected to enter higher risk territory.</div>` : ""}
+          ${risk.trend === "WORSENING" ? `<div style="color:var(--risk-high);font-size:12px;margin-top:6px">ΓÜá Site ${siteId} is projected to enter higher risk territory.</div>` : ""}
         </div>
         <div style="flex:1">
           ${sparkline.length > 0 ? `
@@ -661,14 +686,14 @@ async function loadSiteDetail(siteId) {
         <div class="detail-row"><span class="detail-label">MAJOR</span><span class="detail-value risk-score-high">${sevCounts.MAJOR}</span></div>
         <div class="detail-row"><span class="detail-label">MINOR</span><span class="detail-value risk-score-medium">${sevCounts.MINOR}</span></div>
         <div class="detail-row"><span class="detail-label">ADMINISTRATIVE</span><span class="detail-value" style="color:var(--accent)">${sevCounts.ADMINISTRATIVE}</span></div>
-        <button class="btn btn-sm btn-ghost" onclick="loadPage('deviations')" style="margin-top:8px">View deviations →</button>
+        <button class="btn btn-sm btn-ghost" onclick="loadPage('deviations')" style="margin-top:8px">View deviations ΓåÆ</button>
       </div>
       <div class="site-data-panel">
         <h4>Recommended Actions</h4>
-        <button class="btn btn-sm btn-primary" onclick="investigateSiteWithBob('${siteId}')" style="margin-bottom:8px;width:100%">🔍 Investigate with Bob</button>
-        <button class="btn btn-sm btn-secondary" onclick="loadPage('bob');setTimeout(()=>askBob('Recommend actions for Site ${siteId}'),200)" style="margin-bottom:8px;width:100%">🤖 Ask for Recommendations</button>
-        <button class="btn btn-sm btn-secondary" onclick="generateReport('site','${siteId}')" style="width:100%;margin-bottom:8px">📊 Generate Site Report</button>
-        <button class="btn btn-sm btn-secondary" onclick="openCapaModalForSite('${siteId}')" style="width:100%">🔧 Generate CAPA</button>
+        <button class="btn btn-sm btn-primary" onclick="investigateSiteWithBob('${siteId}')" style="margin-bottom:8px;width:100%">≡ƒöì Investigate with Bob</button>
+        <button class="btn btn-sm btn-secondary" onclick="loadPage('bob');setTimeout(()=>askBob('Recommend actions for Site ${siteId}'),200)" style="margin-bottom:8px;width:100%">≡ƒñû Ask for Recommendations</button>
+        <button class="btn btn-sm btn-secondary" onclick="generateReport('site','${siteId}')" style="width:100%;margin-bottom:8px">≡ƒôè Generate Site Report</button>
+        <button class="btn btn-sm btn-secondary" onclick="openCapaModalForSite('${siteId}')" style="width:100%">≡ƒöº Generate CAPA</button>
       </div>
     </div>
 
@@ -688,9 +713,9 @@ async function loadSiteDetail(siteId) {
               <td>${d.patient_id}</td>
               <td>${(d.type || "").replace(/_/g, " ")}</td>
               <td><span class="badge badge-${(d.severity || "").toLowerCase()}">${d.severity}</span></td>
-              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${d.expected || "—"}</td>
-              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${d.actual || "—"}</td>
-              <td>${d.detected_at || "—"}</td>
+              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${d.expected || "ΓÇö"}</td>
+              <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${d.actual || "ΓÇö"}</td>
+              <td>${d.detected_at || "ΓÇö"}</td>
               <td><span class="badge badge-${d.status}">${d.status}</span></td>
               <td><button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${d.deviation_id}')">View</button></td>
             </tr>`).join("")}
@@ -703,7 +728,7 @@ async function loadSiteDetail(siteId) {
     ${investigation ? `
     <div class="data-panel" style="margin-top:20px">
       <div class="panel-header">
-        <h3>🔍 Investigation Workspace</h3>
+        <h3>≡ƒöì Investigation Workspace</h3>
         ${investigation.primary_signal ? `<span class="indicator-chip" style="background:var(--risk-high);color:#fff">${escapeHtml(investigation.primary_signal)}</span>` : ""}
       </div>
 
@@ -746,7 +771,7 @@ async function loadSiteDetail(siteId) {
           const last = investigation.risk_history[investigation.risk_history.length - 1].risk_score;
           const delta = last - first;
           return `<div style="font-size:12px;color:${delta > 0 ? 'var(--risk-high)' : delta < 0 ? 'var(--risk-low)' : 'var(--text-muted)'};margin-top:4px">
-            ${delta > 0 ? '↑' : delta < 0 ? '↓' : '→'} ${delta > 0 ? '+' : ''}${delta} points over ${investigation.risk_history.length} periods
+            ${delta > 0 ? 'Γåæ' : delta < 0 ? 'Γåô' : 'ΓåÆ'} ${delta > 0 ? '+' : ''}${delta} points over ${investigation.risk_history.length} periods
           </div>`;
         })() : ""}
       </div>
@@ -760,8 +785,8 @@ async function loadSiteDetail(siteId) {
           ${investigation.recurrence.patterns.slice(0, 5).map(p => `
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;padding:6px;background:var(--surface);border-radius:4px">
               <span style="font-weight:600;min-width:160px">${escapeHtml(p.deviation_type.replace(/_/g, ' '))}</span>
-              <span>${p.occurrences} occurrences · ${p.unique_patient_count} patient(s)</span>
-              <span class="badge ${p.is_recurring ? 'badge-major' : 'badge-minor'}">${p.is_recurring ? '⚠ RECURRING' : 'ISOLATED'}</span>
+              <span>${p.occurrences} occurrences ┬╖ ${p.unique_patient_count} patient(s)</span>
+              <span class="badge ${p.is_recurring ? 'badge-major' : 'badge-minor'}">${p.is_recurring ? 'ΓÜá RECURRING' : 'ISOLATED'}</span>
             </div>
           `).join("")}
         </div>
@@ -799,11 +824,217 @@ async function loadSiteDetail(siteId) {
     </div>
     ` : ""}
 
-    <div class="disclaimer-box">⚠ Risk scores are calculated using a prototype multi-factor framework. Predicted scores are estimates, not guaranteed outcomes. All data is synthetic.</div>
+    <div class="disclaimer-box">ΓÜá Risk scores are calculated using a prototype multi-factor framework. Predicted scores are estimates, not guaranteed outcomes. All data is synthetic.</div>
+  `;
+
+  // ΓöÇΓöÇ Blacklist history section (async, appended after main content) ΓöÇΓöÇ
+  try {
+    const auditEvents = await get("/api/audit").catch(() => []);
+    const blEvents = auditEvents.filter(
+      (e) => ["SITE_BLACKLISTED", "SITE_BLACKLIST_CLEARED"].includes(e.action) && e.resource_id === siteId
+    );
+    if (blEvents.length > 0) {
+      const container = document.getElementById("site-detail-content");
+      if (container) {
+        container.insertAdjacentHTML("beforeend", `
+          <div class="data-panel" style="margin-top:20px">
+            <div class="panel-header"><h3>Blacklist History</h3></div>
+            <ul class="blacklist-history-timeline">
+              ${blEvents.map((e) => `
+                <li class="blacklist-history-item">
+                  <div class="blacklist-history-icon">${e.action === "SITE_BLACKLISTED" ? "&#128308;" : "&#9989;"}</div>
+                  <div class="blacklist-history-content">
+                    <div class="blacklist-history-action">${e.action === "SITE_BLACKLISTED" ? "Site Blacklisted" : "Blacklist Cleared"}</div>
+                    <div class="blacklist-history-ts">${e.timestamp ? new Date(e.timestamp).toLocaleString() : "&#8212;"}</div>
+                    ${e.metadata ? `<div class="blacklist-history-meta">${
+                      e.action === "SITE_BLACKLISTED"
+                        ? `Reason: ${escapeHtml(e.metadata.reason || "")} &nbsp;&#183;&nbsp; By: ${escapeHtml(e.metadata.actor || e.metadata.blacklisted_by || "SYSTEM")} &nbsp;&#183;&nbsp; Source: ${_formatBlacklistSource(e.metadata.source)}`
+                        : `Cleared by: ${escapeHtml(e.metadata.cleared_by || "")} &nbsp;&#183;&nbsp; Reason: ${escapeHtml(e.metadata.reason || "")}`
+                    }</div>` : ""}
+                  </div>
+                </li>
+              `).join("")}
+            </ul>
+          </div>
+        `);
+      }
+    }
+  } catch (_) { /* non-critical */ }
+}
+
+// ΓöÇΓöÇ Blacklist ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+function _formatBlacklistSource(source) {
+  const map = {
+    AUTOMATIC_RISK_THRESHOLD: "Automatic Risk Threshold",
+    STUDY_MANAGER: "Study Manager",
+    SYSTEM_ADMIN: "System Admin",
+  };
+  return map[source] || escapeHtml(source || "Unknown");
+}
+
+async function loadBlacklistPanel() {
+  const panel = document.getElementById("blacklist-panel");
+  if (!panel) return;
+  if (!_session) return;
+
+  try {
+    if (_session.role === "SITE_COORDINATOR") {
+      const siteId = _session.site_id;
+      if (!siteId) return;
+      const site = await get(`/api/sites/${siteId}`);
+      if (site.is_blacklisted) {
+        panel.innerHTML = renderCoordinatorBlacklistBanner(site);
+        panel.style.display = "block";
+      } else {
+        panel.style.display = "none";
+      }
+    } else if (["STUDY_MANAGER", "SYSTEM_ADMIN", "AUDITOR"].includes(_session.role)) {
+      const sites = await get("/api/sites/blacklisted");
+      if (!sites.length) {
+        panel.style.display = "none";
+        return;
+      }
+      panel.innerHTML = renderBlacklistedSitesPanel(sites);
+      panel.style.display = "block";
+    }
+  } catch (e) {
+    panel.style.display = "none";
+  }
+}
+
+function renderCoordinatorBlacklistBanner(site) {
+  return `
+    <div class="coordinator-blacklist-banner">
+      <div class="banner-title">&#9888; Your site is currently blacklisted &#9888;</div>
+      <div class="banner-body">
+        <strong>Site ${escapeHtml(site.site_id)}</strong> has been blacklisted. Write actions (CAPA generation, updates) are restricted until cleared by a Study Manager or System Admin.
+      </div>
+      <div class="banner-meta">
+        <strong>Reason:</strong> ${escapeHtml(site.blacklist_reason || "No reason provided")}<br>
+        <strong>Source:</strong> ${_formatBlacklistSource(site.blacklist_source)}
+        &nbsp;&#183;&nbsp; <strong>Blacklisted at:</strong> ${site.blacklisted_at ? new Date(site.blacklisted_at).toLocaleString() : "&#8212;"}
+        &nbsp;&#183;&nbsp; <strong>By:</strong> ${escapeHtml(site.blacklisted_by || "SYSTEM")}
+      </div>
+    </div>
   `;
 }
 
-// ── Deviations ─────────────────────────────────────────────────────────────
+function renderBlacklistedSitesPanel(sites) {
+  const canClear = _session && ["STUDY_MANAGER", "SYSTEM_ADMIN"].includes(_session.role);
+  return `
+    <div class="blacklist-panel">
+      <div class="blacklist-panel-title">&#128308; Blacklisted Sites (${sites.length})</div>
+      ${sites.map((s) => `
+        <div class="blacklist-site-card">
+          <div class="blacklist-site-info">
+            <div class="blacklist-site-id"><span class="blacklist-badge">&#128308; BLACKLISTED</span> &nbsp; ${escapeHtml(s.site_id)}</div>
+            <div class="blacklist-site-name">${escapeHtml(s.name || "")}</div>
+            <div class="blacklist-site-reason"><strong>Reason:</strong> ${escapeHtml(s.blacklist_reason || "")}</div>
+            <div class="blacklist-site-meta">
+              Source: <strong>${_formatBlacklistSource(s.blacklist_source)}</strong>
+              &nbsp;&#183;&nbsp; Blacklisted: <strong>${s.blacklisted_at ? new Date(s.blacklisted_at).toLocaleString() : "&#8212;"}</strong>
+              &nbsp;&#183;&nbsp; By: <strong>${escapeHtml(s.blacklisted_by || "SYSTEM")}</strong>
+              &nbsp;&#183;&nbsp; Risk Score: <strong>${s.risk_score}</strong>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            <button class="btn btn-sm btn-secondary" onclick="loadPage('site-detail','${escapeHtml(s.site_id)}')">&#128270; Investigate</button>
+            ${canClear ? `<button class="btn btn-sm btn-clear-blacklist" onclick="openClearBlacklistModal('${escapeHtml(s.site_id)}','${escapeHtml(s.name||"")}',${s.risk_score||0},'${escapeHtml(s.blacklist_reason||"")}')">&#10003; Clear Blacklist</button>` : ""}
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function openBlacklistModal(siteId, siteName, riskScore) {
+  const existing = document.getElementById("bl-modal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "bl-modal";
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center";
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:480px;width:90%;box-shadow:var(--shadow-lg)">
+      <h3 style="margin-bottom:4px">&#128308; Blacklist Site</h3>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${escapeHtml(siteId)} &mdash; ${escapeHtml(siteName)} &nbsp;&#183;&nbsp; Risk Score: <strong>${riskScore}</strong></div>
+      <div class="form-group">
+        <label for="bl-reason-input">Reason for blacklisting <span style="color:var(--risk-high)">*</span></label>
+        <textarea id="bl-reason-input" rows="3" placeholder="Describe the reason for blacklisting this site..." style="resize:vertical"></textarea>
+      </div>
+      <div id="bl-modal-error" style="color:var(--risk-high);font-size:13px;margin-bottom:8px;display:none"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-secondary" onclick="document.getElementById('bl-modal').remove()">Cancel</button>
+        <button class="btn btn-blacklist" id="bl-confirm-btn">&#128308; Blacklist Site</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("bl-confirm-btn").onclick = async () => {
+    const reason = document.getElementById("bl-reason-input").value.trim();
+    const errEl = document.getElementById("bl-modal-error");
+    if (!reason) { errEl.textContent = "Reason is required."; errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+    try {
+      await post(`/api/sites/${siteId}/blacklist`, { reason });
+      modal.remove();
+      await loadBlacklistPanel();
+      await loadSiteDetail(siteId);
+    } catch (e) {
+      errEl.textContent = e.message || "Failed to blacklist site.";
+      errEl.style.display = "block";
+    }
+  };
+}
+
+function openClearBlacklistModal(siteId, siteName, riskScore, currentReason) {
+  const existing = document.getElementById("clbl-modal");
+  if (existing) existing.remove();
+
+  const warnHtml = riskScore >= 90
+    ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:16px">&#9888; Current risk score (${riskScore}) is still at or above the blacklist threshold (90). Clearing will restore coordinator write access.</div>`
+    : "";
+
+  const modal = document.createElement("div");
+  modal.id = "clbl-modal";
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center";
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:480px;width:90%;box-shadow:var(--shadow-lg)">
+      <h3 style="margin-bottom:4px">&#9989; Clear Blacklist</h3>
+      <div style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${escapeHtml(siteId)} &mdash; ${escapeHtml(siteName)}</div>
+      <div style="font-size:13px;margin-bottom:12px;color:var(--text)"><strong>Current blacklist reason:</strong> ${escapeHtml(currentReason || "&#8212;")}</div>
+      ${warnHtml}
+      <div class="form-group">
+        <label for="clbl-reason-input">Reason for clearing <span style="color:var(--risk-high)">*</span></label>
+        <textarea id="clbl-reason-input" rows="3" placeholder="Describe why the blacklist is being cleared..." style="resize:vertical"></textarea>
+      </div>
+      <div id="clbl-modal-error" style="color:var(--risk-high);font-size:13px;margin-bottom:8px;display:none"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-secondary" onclick="document.getElementById('clbl-modal').remove()">Cancel</button>
+        <button class="btn btn-clear-blacklist" id="clbl-confirm-btn">&#9989; Clear Blacklist</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  document.getElementById("clbl-confirm-btn").onclick = async () => {
+    const reason = document.getElementById("clbl-reason-input").value.trim();
+    const errEl = document.getElementById("clbl-modal-error");
+    if (!reason) { errEl.textContent = "Reason is required."; errEl.style.display = "block"; return; }
+    errEl.style.display = "none";
+    try {
+      await post(`/api/sites/${siteId}/clear-blacklist`, { reason });
+      modal.remove();
+      await loadBlacklistPanel();
+      await loadSiteDetail(siteId);
+    } catch (e) {
+      errEl.textContent = e.message || "Failed to clear blacklist.";
+      errEl.style.display = "block";
+    }
+  };
+}
+
+// ΓöÇΓöÇ Deviations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 let _allDevs = [];
 let _devCurrentPage = 1;
 let _devPageSize = 10;
@@ -841,8 +1072,8 @@ function _renderDevsPage() {
     <td>${d.patient_id}</td>
     <td>${(d.type || "").replace(/_/g, " ")}</td>
     <td><span class="badge badge-${(d.severity || "").toLowerCase()}">${d.severity}</span></td>
-    <td>${d.severity_score ?? "—"}</td>
-    <td>${d.detected_at || "—"}</td>
+    <td>${d.severity_score ?? "ΓÇö"}</td>
+    <td>${d.detected_at || "ΓÇö"}</td>
     <td><span class="badge badge-${d.status}">${d.status}</span></td>
     <td><button class="btn btn-sm btn-ghost" onclick="loadPage('deviation-detail','${d.deviation_id}')">View</button></td>
   </tr>`).join("") || `<tr><td colspan="9" class="loading-cell">No deviations match the filter.</td></tr>`;
@@ -852,7 +1083,7 @@ function _renderDevsPage() {
   if (summaryEl) {
     summaryEl.textContent = total === 0
       ? "No deviations match the filter."
-      : `Showing ${start + 1}–${end} of ${total} deviation${total !== 1 ? "s" : ""}`;
+      : `Showing ${start + 1}ΓÇô${end} of ${total} deviation${total !== 1 ? "s" : ""}`;
   }
 
   // Rows-per-page selector sync
@@ -877,7 +1108,7 @@ function _renderDevsPage() {
     const pages = _pageWindow(_devCurrentPage, totalPages);
     let prev = 0;
     for (const p of pages) {
-      if (p - prev > 1) pageButtons += `<span class="pag-ellipsis" aria-hidden="true">…</span>`;
+      if (p - prev > 1) pageButtons += `<span class="pag-ellipsis" aria-hidden="true">ΓÇª</span>`;
       pageButtons += _pageBtn(p, _devCurrentPage);
       prev = p;
     }
@@ -885,10 +1116,10 @@ function _renderDevsPage() {
 
   paginatorEl.innerHTML = `
     <button class="pag-btn pag-nav" ${prevDisabled} aria-label="Previous page"
-      onclick="_devGoPage(${_devCurrentPage - 1})">‹ Prev</button>
+      onclick="_devGoPage(${_devCurrentPage - 1})">ΓÇ╣ Prev</button>
     ${pageButtons}
     <button class="pag-btn pag-nav" ${nextDisabled} aria-label="Next page"
-      onclick="_devGoPage(${_devCurrentPage + 1})">Next ›</button>
+      onclick="_devGoPage(${_devCurrentPage + 1})">Next ΓÇ║</button>
   `;
 }
 
@@ -960,18 +1191,18 @@ async function loadDeviationDetail(devId) {
       <div style="margin-bottom:24px">
         <h2 style="margin:0">${dev.deviation_id}</h2>
         <div style="color:var(--text-muted);font-size:13px;margin-top:4px">
-          Site: <strong>${dev.site_id}</strong> · Patient: <strong>${dev.patient_id}</strong> · Detected: ${dev.detected_at}
+          Site: <strong>${dev.site_id}</strong> ┬╖ Patient: <strong>${dev.patient_id}</strong> ┬╖ Detected: ${dev.detected_at}
         </div>
       </div>
 
       <div class="expected-actual-box">
         <div class="ea-box expected">
           <div class="ea-label expected">Expected (Protocol)</div>
-          <div class="ea-value">${dev.expected || "—"}</div>
+          <div class="ea-value">${dev.expected || "ΓÇö"}</div>
         </div>
         <div class="ea-box actual">
           <div class="ea-label actual">Actual (Observed)</div>
-          <div class="ea-value">${dev.actual || "—"}</div>
+          <div class="ea-value">${dev.actual || "ΓÇö"}</div>
         </div>
       </div>
 
@@ -980,9 +1211,9 @@ async function loadDeviationDetail(devId) {
           <h4>Deviation Details</h4>
           <div class="detail-row"><span class="detail-label">Type</span><span class="detail-value">${(dev.type || "").replace(/_/g, " ")}</span></div>
           <div class="detail-row"><span class="detail-label">Severity</span><span class="detail-value"><span class="badge badge-${(dev.severity || "").toLowerCase()}">${dev.severity}</span></span></div>
-          <div class="detail-row"><span class="detail-label">Severity Score</span><span class="detail-value">${dev.severity_score ?? "—"} / 25</span></div>
+          <div class="detail-row"><span class="detail-label">Severity Score</span><span class="detail-value">${dev.severity_score ?? "ΓÇö"} / 25</span></div>
           <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-${dev.status}">${dev.status}</span></span></div>
-          <div class="detail-row"><span class="detail-label">Description</span><span class="detail-value">${dev.description || "—"}</span></div>
+          <div class="detail-row"><span class="detail-label">Description</span><span class="detail-value">${dev.description || "ΓÇö"}</span></div>
           ${dev.severity_reason ? `<div class="detail-row" style="flex-direction:column;gap:4px">
             <span class="detail-label">Severity Reasoning</span>
             <span class="detail-value" style="font-size:12px;color:var(--text-muted)">${dev.severity_reason}</span>
@@ -1017,7 +1248,7 @@ async function loadDeviationDetail(devId) {
             </div>
           ` : ""}
           <div style="margin-top:16px">
-            <button class="btn btn-sm btn-primary" onclick="loadPage('bob');setTimeout(()=>askBob('Explain deviation ${dev.deviation_id} at site ${dev.site_id}'),200)">🤖 Ask Bob About This</button>
+            <button class="btn btn-sm btn-primary" onclick="loadPage('bob');setTimeout(()=>askBob('Explain deviation ${dev.deviation_id} at site ${dev.site_id}'),200)">≡ƒñû Ask Bob About This</button>
           </div>
         </div>
       </div>
@@ -1027,18 +1258,18 @@ async function loadDeviationDetail(devId) {
       <div class="data-panel" style="margin-top:20px">
         <div class="panel-header"><h3>Evidence Chain</h3></div>
         <div class="evidence-chain" style="font-size:12px;padding:12px;background:var(--surface);border-radius:6px;font-family:monospace;line-height:2">
-          ${dev.protocol_rule ? `<span class="ec-node ec-rule">Protocol ${dev.evidence?.protocol_id || 'TG-101'} Rule ${dev.evidence?.rule_id || '?'}</span> <span class="ec-arrow">→</span> ` : ""}
-          <span class="ec-node ec-expected">Expected: ${escapeHtml(dev.expected || '—')}</span> <span class="ec-arrow">→</span>
-          <span class="ec-node ec-patient">Patient ${dev.patient_id}</span> <span class="ec-arrow">→</span>
-          <span class="ec-node ec-actual">Actual: ${escapeHtml(dev.actual || '—')}</span> <span class="ec-arrow">→</span>
-          <span class="ec-node ec-deviation">${dev.deviation_id}</span> <span class="ec-arrow">→</span>
-          <span class="ec-node ec-severity badge badge-${(dev.severity || '').toLowerCase()}">${dev.severity}</span> <span class="ec-arrow">→</span>
+          ${dev.protocol_rule ? `<span class="ec-node ec-rule">Protocol ${dev.evidence?.protocol_id || 'TG-101'} Rule ${dev.evidence?.rule_id || '?'}</span> <span class="ec-arrow">ΓåÆ</span> ` : ""}
+          <span class="ec-node ec-expected">Expected: ${escapeHtml(dev.expected || 'ΓÇö')}</span> <span class="ec-arrow">ΓåÆ</span>
+          <span class="ec-node ec-patient">Patient ${dev.patient_id}</span> <span class="ec-arrow">ΓåÆ</span>
+          <span class="ec-node ec-actual">Actual: ${escapeHtml(dev.actual || 'ΓÇö')}</span> <span class="ec-arrow">ΓåÆ</span>
+          <span class="ec-node ec-deviation">${dev.deviation_id}</span> <span class="ec-arrow">ΓåÆ</span>
+          <span class="ec-node ec-severity badge badge-${(dev.severity || '').toLowerCase()}">${dev.severity}</span> <span class="ec-arrow">ΓåÆ</span>
           <span class="ec-node ec-site">Site ${dev.site_id}</span>
-          ${dev.risk_contribution !== undefined ? ` <span class="ec-arrow">→</span> <span class="ec-node ec-risk">Risk contribution +${dev.risk_contribution}</span>` : ""}
+          ${dev.risk_contribution !== undefined ? ` <span class="ec-arrow">ΓåÆ</span> <span class="ec-node ec-risk">Risk contribution +${dev.risk_contribution}</span>` : ""}
         </div>
         ${dev.protocol_rule ? `
         <div style="margin-top:12px;font-size:12px">
-          <strong>Protocol Rule ${dev.protocol_rule.rule_id}:</strong> ${escapeHtml(dev.protocol_rule.name || '')} —
+          <strong>Protocol Rule ${dev.protocol_rule.rule_id}:</strong> ${escapeHtml(dev.protocol_rule.name || '')} ΓÇö
           <em>${escapeHtml(dev.protocol_rule.expected || '')}</em>
         </div>
         ` : ""}
@@ -1063,14 +1294,14 @@ async function loadDeviationDetail(devId) {
       </div>
       ` : ""}
 
-      <div class="disclaimer-box">⚠ Severity classification is a prototype framework. Not ICH/FDA/EMA guidance.</div>
+      <div class="disclaimer-box">ΓÜá Severity classification is a prototype framework. Not ICH/FDA/EMA guidance.</div>
     `;
   } catch (err) {
     document.getElementById("deviation-detail-content").innerHTML = `<div class="disclaimer-box">Error loading deviation: ${err.message}</div>`;
   }
 }
 
-// ── CAPA ───────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ CAPA ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 let _capaSiteId = null;
 
 async function loadCapa() {
@@ -1099,7 +1330,7 @@ async function loadCapa() {
         ? (daysRemaining < 0
           ? `<span class="days-overdue">${Math.abs(daysRemaining)}d overdue</span>`
           : `<span class="days-remaining">${daysRemaining}d left</span>`)
-        : "—";
+        : "ΓÇö";
       return `<tr>
         <td><button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">${c.capa_id}</button></td>
         <td>${c.site_id}</td>
@@ -1108,7 +1339,7 @@ async function loadCapa() {
         <td>${c.owner}</td>
         <td><span class="badge badge-${c.status}">${c.status}</span></td>
         <td>${(c.created_at || "").split("T")[0]}</td>
-        <td>${c.due_date || "—"}</td>
+        <td>${c.due_date || "ΓÇö"}</td>
         <td>${daysHtml}</td>
         <td>
           <button class="btn btn-sm btn-ghost" onclick="loadPage('capa-detail','${c.capa_id}')">View</button>
@@ -1129,10 +1360,10 @@ async function loadCapaDetail(capaId) {
       <div style="margin-bottom:24px">
         <h2 style="margin:0">${c.capa_id}</h2>
         <div style="color:var(--text-muted);font-size:13px;margin-top:4px">
-          Site: <strong>${c.site_id}</strong> · Priority: <strong>${c.priority}</strong> · Status: <span class="badge badge-${c.status}">${c.status}</span>
+          Site: <strong>${c.site_id}</strong> ┬╖ Priority: <strong>${c.priority}</strong> ┬╖ Status: <span class="badge badge-${c.status}">${c.status}</span>
         </div>
       </div>
-      <div class="disclaimer-box" style="margin-bottom:24px">⚠ ${c.disclaimer || "AI-generated suggestions require qualified clinical and regulatory review before implementation."}</div>
+      <div class="disclaimer-box" style="margin-bottom:24px">ΓÜá ${c.disclaimer || "AI-generated suggestions require qualified clinical and regulatory review before implementation."}</div>
       <div class="capa-detail-grid">
         <div>
           <div class="detail-card" style="margin-bottom:20px">
@@ -1140,7 +1371,7 @@ async function loadCapaDetail(capaId) {
             <p>${c.problem_statement}</p>
           </div>
           <div class="detail-card" style="margin-bottom:20px">
-            <h4>Root Cause Hypothesis (AI-generated — requires review)</h4>
+            <h4>Root Cause Hypothesis (AI-generated ΓÇö requires review)</h4>
             <p style="color:var(--text-muted)">${c.root_cause}</p>
           </div>
           <div class="detail-card" style="margin-bottom:20px">
@@ -1164,7 +1395,7 @@ async function loadCapaDetail(capaId) {
             <div class="detail-row"><span class="detail-label">Priority</span><span class="detail-value">${c.priority}</span></div>
             <div class="detail-row"><span class="detail-label">Owner</span><span class="detail-value">${c.owner}</span></div>
             <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge badge-${c.status}">${c.status}</span></span></div>
-            <div class="detail-row"><span class="detail-label">Due Date</span><span class="detail-value">${c.due_date || "—"}</span></div>
+            <div class="detail-row"><span class="detail-label">Due Date</span><span class="detail-value">${c.due_date || "ΓÇö"}</span></div>
             <div class="detail-row"><span class="detail-label">Created</span><span class="detail-value">${(c.created_at || "").split("T")[0]}</span></div>
             <div class="detail-row"><span class="detail-label">Deviations</span><span class="detail-value">${(c.deviation_ids || []).length} linked</span></div>
           </div>
@@ -1176,7 +1407,7 @@ async function loadCapaDetail(capaId) {
                 const currentStepIdx = statusMap[c.status] || 0;
                 const stepCls = i < currentStepIdx ? 'done' : (i === currentStepIdx ? 'active' : '');
                 return `<div class="capa-workflow-step">
-                  <div class="capa-step-dot ${stepCls}">${i < currentStepIdx ? '✓' : i+1}</div>
+                  <div class="capa-step-dot ${stepCls}">${i < currentStepIdx ? 'Γ£ô' : i+1}</div>
                   <div class="capa-step-label ${stepCls}">${step}</div>
                 </div>`;
               }).join('')}
@@ -1185,15 +1416,15 @@ async function loadCapaDetail(capaId) {
           <div class="detail-card" style="margin-top:16px">
             <h4>Actions</h4>
             ${["STUDY_MANAGER", "SYSTEM_ADMIN"].includes(_session?.role) ? `
-              <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','COMPLETED')">✓ Approve CAPA</button>
-              <button class="btn btn-danger btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','OPEN')">✗ Reject / Reopen</button>
+              <button class="btn btn-primary btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','COMPLETED')">Γ£ô Approve CAPA</button>
+              <button class="btn btn-danger btn-full" style="margin-bottom:8px" onclick="submitCapaAction('${c.capa_id}','OPEN')">Γ£ù Reject / Reopen</button>
             ` : ""}
             ${["SITE_COORDINATOR"].includes(_session?.role) ? `
               <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">Update Status</button>
             ` : ""}
-            <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">⚙ Change Status</button>
-            <button class="btn btn-ghost btn-full" onclick="generateReport('site','${c.site_id}')">📊 Site Report</button>
-            <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="loadPage('bob');setTimeout(()=>askBob('Explain CAPA ${c.capa_id} for site ${c.site_id}'),200)">🤖 Ask Bob</button>
+            <button class="btn btn-secondary btn-full" style="margin-bottom:8px" onclick="openCapaStatusModal('${c.capa_id}','${c.status}')">ΓÜÖ Change Status</button>
+            <button class="btn btn-ghost btn-full" onclick="generateReport('site','${c.site_id}')">≡ƒôè Site Report</button>
+            <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="loadPage('bob');setTimeout(()=>askBob('Explain CAPA ${c.capa_id} for site ${c.site_id}'),200)">≡ƒñû Ask Bob</button>
           </div>
         </div>
       </div>
@@ -1206,13 +1437,13 @@ async function loadCapaDetail(capaId) {
 function showCapaGenerateModal() {
   const select = document.getElementById("capa-site-select");
   select.innerHTML = `<option value="">Select a site...</option>` +
-    (_allSites.length ? _allSites : []).map((s) => `<option value="${s.site_id}">${s.site_id} — ${s.name}</option>`).join("");
+    (_allSites.length ? _allSites : []).map((s) => `<option value="${s.site_id}">${s.site_id} ΓÇö ${s.name}</option>`).join("");
   document.getElementById("capa-modal").style.display = "flex";
   if (!_allSites.length) {
     get("/api/sites").then((sites) => {
       _allSites = sites;
       select.innerHTML = `<option value="">Select a site...</option>` +
-        sites.map((s) => `<option value="${s.site_id}">${s.site_id} — ${s.name}</option>`).join("");
+        sites.map((s) => `<option value="${s.site_id}">${s.site_id} ΓÇö ${s.name}</option>`).join("");
     }).catch(() => {});
   }
 }
@@ -1275,7 +1506,7 @@ async function submitCapaStatusUpdate() {
 }
 window.submitCapaStatusUpdate = submitCapaStatusUpdate;
 
-// ── Reports ────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Reports ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Recent reports tracker
 let _recentReports = [];
 
@@ -1286,7 +1517,7 @@ async function loadReportSiteSelector() {
     const sites = _allSites.length ? _allSites : await get("/api/sites");
     if (!_allSites.length) _allSites = sites;
     sel.innerHTML = `<option value="">Select a site...</option>` +
-      sites.map((s) => `<option value="${s.site_id}">${s.site_id} — ${s.name || s.site_id}</option>`).join("");
+      sites.map((s) => `<option value="${s.site_id}">${s.site_id} ΓÇö ${s.name || s.site_id}</option>`).join("");
   } catch {}
 }
 
@@ -1344,7 +1575,7 @@ async function generateReport(type, siteId) {
       html = renderCapaReport(data);
     } else if (type === "site") {
       data = await get(`/api/reports/site/${siteId}`);
-      titleText = `Site Risk Report — ${siteId}`;
+      titleText = `Site Risk Report ΓÇö ${siteId}`;
       html = renderSiteReport(data, siteId);
     }
     title.textContent = titleText;
@@ -1358,8 +1589,8 @@ window.generateReport = generateReport;
 
 function renderTrialReport(data) {
   return `<div class="report-content">
-    <div class="report-title">Trial Summary Report — TG-101</div>
-    <div class="report-meta">Generated: ${new Date().toLocaleString()} · Generated by: ${_session?.name}</div>
+    <div class="report-title">Trial Summary Report ΓÇö TG-101</div>
+    <div class="report-meta">Generated: ${new Date().toLocaleString()} ┬╖ Generated by: ${_session?.name}</div>
     <div class="report-section"><h4>Overview</h4>
       <div class="detail-row"><span class="detail-label">Total Sites</span><span>${data.total_sites}</span></div>
       <div class="detail-row"><span class="detail-label">Total Deviations</span><span>${data.total_deviations}</span></div>
@@ -1371,7 +1602,7 @@ function renderTrialReport(data) {
       ${(data.high_risk_sites || []).map((s) => `
         <div class="detail-row">
           <span class="detail-label">${s.site_id}</span>
-          <span><span class="badge badge-HIGH">HIGH</span> Score: ${s.current_score}/100 · ${s.trend}</span>
+          <span><span class="badge badge-HIGH">HIGH</span> Score: ${s.current_score}/100 ┬╖ ${s.trend}</span>
         </div>`).join("")}
     </div>
     <div class="disclaimer-box">${data.disclaimer}</div>
@@ -1383,7 +1614,7 @@ function renderDevsReport(data) {
   const major = devs.filter((d) => d.severity === "MAJOR").length;
   return `<div class="report-content">
     <div class="report-title">Protocol Deviations Report</div>
-    <div class="report-meta">Generated: ${new Date().toLocaleString()} · Total: ${devs.length} · Major: ${major}</div>
+    <div class="report-meta">Generated: ${new Date().toLocaleString()} ┬╖ Total: ${devs.length} ┬╖ Major: ${major}</div>
     <div class="report-section"><h4>Deviation Summary</h4>
       <table class="data-table">
         <thead><tr><th>ID</th><th>Site</th><th>Patient</th><th>Type</th><th>Severity</th><th>Detected</th><th>Status</th></tr></thead>
@@ -1405,14 +1636,14 @@ function renderCapaReport(data) {
   const records = data.capa_records || [];
   return `<div class="report-content">
     <div class="report-title">CAPA Report</div>
-    <div class="report-meta">Generated: ${new Date().toLocaleString()} · Total: ${records.length}</div>
+    <div class="report-meta">Generated: ${new Date().toLocaleString()} ┬╖ Total: ${records.length}</div>
     ${records.map((c) => `
       <div class="report-section">
-        <h4>${c.capa_id} — ${c.site_id} — <span class="badge badge-${c.status}">${c.status}</span></h4>
+        <h4>${c.capa_id} ΓÇö ${c.site_id} ΓÇö <span class="badge badge-${c.status}">${c.status}</span></h4>
         <div class="detail-row"><span class="detail-label">Problem</span><span>${c.problem_statement}</span></div>
         <div class="detail-row"><span class="detail-label">Priority</span><span>${c.priority}</span></div>
         <div class="detail-row"><span class="detail-label">Owner</span><span>${c.owner}</span></div>
-        <div class="detail-row"><span class="detail-label">Due</span><span>${c.due_date || "—"}</span></div>
+        <div class="detail-row"><span class="detail-label">Due</span><span>${c.due_date || "ΓÇö"}</span></div>
       </div>`).join("")}
     <div class="disclaimer-box">${data.disclaimer}</div>
   </div>`;
@@ -1422,8 +1653,8 @@ function renderSiteReport(data, siteId) {
   const risk = data.risk || {};
   const devs = data.deviations || [];
   return `<div class="report-content">
-    <div class="report-title">Site Risk Report — ${siteId}</div>
-    <div class="report-meta">Generated: ${new Date().toLocaleString()} · Generated by: ${_session?.name}</div>
+    <div class="report-title">Site Risk Report ΓÇö ${siteId}</div>
+    <div class="report-meta">Generated: ${new Date().toLocaleString()} ┬╖ Generated by: ${_session?.name}</div>
     <div class="report-section"><h4>Risk Summary</h4>
       <div class="detail-row"><span class="detail-label">Risk Score</span><span class="risk-score-${(risk.risk_level || "").toLowerCase()}">${risk.current_score}/100</span></div>
       <div class="detail-row"><span class="detail-label">Risk Level</span><span><span class="badge badge-${risk.risk_level}">${risk.risk_level}</span></span></div>
@@ -1431,7 +1662,7 @@ function renderSiteReport(data, siteId) {
       <div class="detail-row"><span class="detail-label">Predicted Score</span><span>${risk.predicted_score}/100</span></div>
     </div>
     <div class="report-section"><h4>Leading Indicators</h4>
-      ${(risk.leading_indicators || []).map((i) => `<div>• ${i}</div>`).join("")}
+      ${(risk.leading_indicators || []).map((i) => `<div>ΓÇó ${i}</div>`).join("")}
     </div>
     <div class="report-section"><h4>Deviations (${devs.length})</h4>
       <table class="data-table">
@@ -1453,7 +1684,7 @@ function printReport() {
 }
 window.printReport = printReport;
 
-// ── Audit ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Audit ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadAudit() {
   try {
     _allAuditEvents = await get("/api/audit");
@@ -1472,7 +1703,7 @@ async function loadAudit() {
 
 function renderAuditTable(events) {
   const fmtDate = (ts) => {
-    if (!ts) return "—";
+    if (!ts) return "ΓÇö";
     const d = new Date(ts);
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) + " " + d.toTimeString().slice(0, 8);
   };
@@ -1481,8 +1712,8 @@ function renderAuditTable(events) {
     <td>${e.user_id}</td>
     <td><span class="audit-action-badge">${e.action}</span></td>
     <td>${e.resource_type}</td>
-    <td>${e.resource_id || "—"}</td>
-    <td style="font-size:11px;color:var(--text-muted)">${Object.keys(e.metadata || {}).length ? JSON.stringify(e.metadata) : "—"}</td>
+    <td>${e.resource_id || "ΓÇö"}</td>
+    <td style="font-size:11px;color:var(--text-muted)">${Object.keys(e.metadata || {}).length ? JSON.stringify(e.metadata) : "ΓÇö"}</td>
   </tr>`).join("") || `<tr><td colspan="6" class="loading-cell">No events.</td></tr>`;
 }
 
@@ -1509,7 +1740,7 @@ function setupAuditFilters() {
   if (userFilter) userFilter.addEventListener("change", applyAuditFilters);
 }
 
-// ── IBM Bob ────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ IBM Bob ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadBobTools() {
   try {
     const tools = await get("/api/bob/tools");
@@ -1589,14 +1820,14 @@ async function askBob(question) {
         <div class="message-content">
           <p style="white-space:pre-line">${escapeHtml(answer)}</p>
           <div class="message-sources">
-            ${sources.map((s) => `<span class="source-chip">📊 ${escapeHtml(s)}</span>`).join("")}
-            ${toolUsed ? `<span class="source-chip">🔧 ${escapeHtml(toolUsed)}</span>` : ""}
+            ${sources.map((s) => `<span class="source-chip">≡ƒôè ${escapeHtml(s)}</span>`).join("")}
+            ${toolUsed ? `<span class="source-chip">≡ƒöº ${escapeHtml(toolUsed)}</span>` : ""}
             ${provider ? `<span class="provider-chip">${escapeHtml(provider)}</span>` : ""}
           </div>
-          ${disclaimer ? `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);font-style:italic">⚠ ${escapeHtml(disclaimer)}</div>` : ""}
+          ${disclaimer ? `<div style="margin-top:8px;font-size:11px;color:var(--text-muted);font-style:italic">ΓÜá ${escapeHtml(disclaimer)}</div>` : ""}
           ${result.tool_used && result.tool_result ? `
             <div class="bob-evidence-panel">
-              <button class="bob-evidence-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▲ Hide Investigation Evidence':'▼ Show Investigation Evidence'">▼ Show Investigation Evidence</button>
+              <button class="bob-evidence-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'Γû▓ Hide Investigation Evidence':'Γû╝ Show Investigation Evidence'">Γû╝ Show Investigation Evidence</button>
               <div class="bob-evidence-content">
                 <div class="evidence-row"><span class="evidence-label">Tool used:</span><span class="evidence-val">${escapeHtml(toolUsed)}</span></div>
                 <div class="evidence-row"><span class="evidence-label">Provider:</span><span class="evidence-val">${escapeHtml(provider)}</span></div>
@@ -1623,7 +1854,7 @@ async function askBob(question) {
 }
 window.askBob = askBob;
 
-// ── Settings ───────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Settings ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadSettings() {
   if (_session?.role !== "SYSTEM_ADMIN") return;
   try {
@@ -1644,14 +1875,14 @@ async function loadSettings() {
 async function recalculateRisk() {
   try {
     const result = await post("/api/risk/recalculate", {});
-    document.getElementById("recalc-status").innerHTML = `<div class="badge badge-success">✓ Recalculated ${result.sites} sites</div>`;
+    document.getElementById("recalc-status").innerHTML = `<div class="badge badge-success">Γ£ô Recalculated ${result.sites} sites</div>`;
   } catch (err) {
     document.getElementById("recalc-status").innerHTML = `<div class="badge badge-major">Error: ${err.message}</div>`;
   }
 }
 window.recalculateRisk = recalculateRisk;
 
-// ── Modals ─────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Modals ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function closeModal(id) {
   document.getElementById(id).style.display = "none";
 }
@@ -1664,14 +1895,14 @@ document.querySelectorAll(".modal-overlay").forEach((overlay) => {
   });
 });
 
-// ── Utilities ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Utilities ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function escapeHtml(str) {
   if (!str) return "";
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 
-// ── Page Context ────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Page Context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function setPageContext(type, id, label) {
   _currentContext = type ? { type, id, label } : null;
   const tooltip = document.getElementById("bob-context-tooltip");
@@ -1686,7 +1917,7 @@ function setPageContext(type, id, label) {
 }
 window.setPageContext = setPageContext;
 
-// ── Dashboard Attention ─────────────────────────────────────────────────────
+// ΓöÇΓöÇ Dashboard Attention ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadDashboardAttention() {
   try {
     const data = await get("/api/dashboard/attention");
@@ -1703,7 +1934,7 @@ async function loadDashboardAttention() {
       levelEl.textContent = level;
       levelEl.className = "th-level th-level-" + level.toLowerCase();
       const worsening = (data.attention_sites || []).filter((s) => s.trend === "WORSENING").length;
-      trendEl.textContent = worsening > 0 ? `↑ ${worsening} site(s) WORSENING` : "→ STABLE";
+      trendEl.textContent = worsening > 0 ? `Γåæ ${worsening} site(s) WORSENING` : "ΓåÆ STABLE";
       scoreEl.style.color = riskScore >= 65 ? "var(--risk-high)" : riskScore >= 35 ? "var(--risk-medium)" : "var(--risk-low)";
     }
 
@@ -1720,7 +1951,7 @@ async function loadDashboardAttention() {
             <div class="attention-dot ${dotClass}"></div>
             <div style="flex:1;min-width:0">
               <div class="attention-site">${s.site_id}</div>
-              <div class="attention-detail">Risk ${s.current_score} → Projected ${s.predicted_score} · ${s.trend}</div>
+              <div class="attention-detail">Risk ${s.current_score} ΓåÆ Projected ${s.predicted_score} ┬╖ ${s.trend}</div>
             </div>
             <div class="attention-actions">
               <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${s.site_id}')">Investigate</button>
@@ -1741,11 +1972,11 @@ async function loadDashboardAttention() {
           const indHtml = (w.leading_indicators || []).slice(0, 3).map((i) => `<span class="ew-indicator">${escapeHtml(i)}</span>`).join("");
           const riskChangeHtml = w.risk_change !== undefined && w.risk_change !== 0
             ? `<span style="color:${w.risk_change > 0 ? 'var(--risk-high)' : 'var(--risk-low)'}; font-size:11px; font-weight:600; margin-left:6px">
-                ${w.risk_change > 0 ? '↑' : '↓'}${Math.abs(w.risk_change)}pts
+                ${w.risk_change > 0 ? 'Γåæ' : 'Γåô'}${Math.abs(w.risk_change)}pts
                </span>`
             : "";
           const primarySignalHtml = w.primary_signal
-            ? `<div style="font-size:11px;font-weight:600;color:var(--risk-high);margin-bottom:3px">⚠ ${escapeHtml(w.primary_signal)}</div>`
+            ? `<div style="font-size:11px;font-weight:600;color:var(--risk-high);margin-bottom:3px">ΓÜá ${escapeHtml(w.primary_signal)}</div>`
             : "";
           const recentHtml = w.recent_deviation_count !== undefined
             ? `<span class="ew-indicator">${w.recent_deviation_count} recent</span>`
@@ -1753,7 +1984,7 @@ async function loadDashboardAttention() {
           return `<div class="ew-item">
             <div class="ew-item-site">${w.site_id}</div>
             ${primarySignalHtml}
-            <div class="ew-item-scores">Risk: ${w.current_score}/100 → Projected: ${w.predicted_score}/100${riskChangeHtml}</div>
+            <div class="ew-item-scores">Risk: ${w.current_score}/100 ΓåÆ Projected: ${w.predicted_score}/100${riskChangeHtml}</div>
             <div class="ew-item-indicators">${indHtml}${recentHtml}</div>
             <div class="ew-actions">
               <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${w.site_id}')">Investigate</button>
@@ -1768,7 +1999,7 @@ async function loadDashboardAttention() {
   }
 }
 
-// ── Site Heatmap ────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Site Heatmap ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadSiteHeatmap() {
   try {
     const sites = await get("/api/dashboard/heatmap");
@@ -1780,7 +2011,7 @@ async function loadSiteHeatmap() {
     }
     container.innerHTML = sites.map((s) => {
       const cls = s.risk_level === "HIGH" ? "hm-high" : s.risk_level === "MEDIUM" ? "hm-medium" : "hm-low";
-      return `<div class="hm-cell ${cls}" onclick="loadPage('site-detail','${s.site_id}')" title="${escapeHtml(s.name || s.site_id)} — ${s.risk_level} (${s.risk_score}/100)">
+      return `<div class="hm-cell ${cls}" onclick="loadPage('site-detail','${s.site_id}')" title="${escapeHtml(s.name || s.site_id)} ΓÇö ${s.risk_level} (${s.risk_score}/100)">
         <span class="hm-id">${s.site_id}</span>
         <span class="hm-score">${s.risk_score}</span>
       </div>`;
@@ -1790,7 +2021,7 @@ async function loadSiteHeatmap() {
   }
 }
 
-// ── Sites Becoming Risky (P0-8) ─────────────────────────────────────────────
+// ΓöÇΓöÇ Sites Becoming Risky (P0-8) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadEmergingSites() {
   try {
     const data = await get("/api/dashboard/emerging-sites");
@@ -1805,7 +2036,7 @@ async function loadEmergingSites() {
     container.innerHTML = `
       <div class="data-panel">
         <div class="panel-header">
-          <h3>🚨 Sites Becoming Risky</h3>
+          <h3>≡ƒÜ¿ Sites Becoming Risky</h3>
           <span style="font-size:12px;color:var(--text-muted)">Top sites by risk acceleration this period</span>
         </div>
         <div class="table-container">
@@ -1818,15 +2049,15 @@ async function loadEmergingSites() {
                 <td><button class="btn btn-sm btn-ghost" onclick="loadPage('site-detail','${s.site_id}')">${s.site_id}</button></td>
                 <td>${s.previous_score}/100</td>
                 <td><strong style="color:${s.current_score >= 65 ? 'var(--risk-high)' : s.current_score >= 35 ? 'var(--risk-medium)' : 'var(--risk-low)'}">${s.current_score}/100</strong></td>
-                <td style="color:var(--risk-high);font-weight:600">↑ +${s.risk_change}</td>
+                <td style="color:var(--risk-high);font-weight:600">Γåæ +${s.risk_change}</td>
                 <td>${s.projected_score}/100</td>
-                <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(s.primary_signal || '—')}</td>
+                <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(s.primary_signal || 'ΓÇö')}</td>
                 <td><button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${s.site_id}')">Investigate</button></td>
               </tr>`).join("")}
             </tbody>
           </table>
         </div>
-        <div class="disclaimer-box" style="margin-top:8px">⚠ Risk acceleration calculated from deterministic synthetic data. Not for clinical use.</div>
+        <div class="disclaimer-box" style="margin-top:8px">ΓÜá Risk acceleration calculated from deterministic synthetic data. Not for clinical use.</div>
       </div>
     `;
   } catch (err) {
@@ -1834,7 +2065,7 @@ async function loadEmergingSites() {
   }
 }
 
-// ── Notifications ───────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Notifications ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function loadNotifications() {
   try {
     _notifications = await get("/api/notifications");
@@ -1878,7 +2109,7 @@ function handleNotifClick(page, id) {
 }
 window.handleNotifClick = handleNotifClick;
 
-// ── Global Search ───────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Global Search ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function setupGlobalSearch() {
   const input = document.getElementById("global-search");
   if (!input) return;
@@ -1950,7 +2181,7 @@ function handleSearchClick(page, id) {
 }
 window.handleSearchClick = handleSearchClick;
 
-// ── Investigate Site With Bob ───────────────────────────────────────────────
+// ΓöÇΓöÇ Investigate Site With Bob ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 async function investigateSiteWithBob(siteId) {
   loadPage("bob");
   await new Promise((r) => setTimeout(r, 200));
@@ -1962,11 +2193,11 @@ async function investigateSiteWithBob(siteId) {
       <div class="bot-avatar">B</div>
       <div class="message-content">
         <div class="investigate-panel" id="invest-panel-${siteId}">
-          <div class="investigate-header">🔍 Investigating Site ${siteId}</div>
+          <div class="investigate-header">≡ƒöì Investigating Site ${siteId}</div>
           <div class="investigate-steps" id="invest-steps-${siteId}">
             ${["Retrieve current risk", "Analyze risk drivers", "Retrieve recent deviations", "Analyze trend", "Identify leading indicators", "Recommend actions"].map((s, i) => `
               <div class="investigate-step pending" id="invest-step-${siteId}-${i}">
-                <span class="step-icon">○</span>
+                <span class="step-icon">Γùï</span>
                 <span class="step-text">${s}</span>
                 <span class="step-status">Pending</span>
               </div>
@@ -1983,7 +2214,7 @@ async function investigateSiteWithBob(siteId) {
     const step = document.getElementById(`invest-step-${siteId}-${i}`);
     if (!step) return;
     step.className = `investigate-step ${state}`;
-    step.querySelector(".step-icon").textContent = state === "done" ? "✓" : state === "active" ? "◉" : "○";
+    step.querySelector(".step-icon").textContent = state === "done" ? "Γ£ô" : state === "active" ? "Γùë" : "Γùï";
     step.querySelector(".step-status").textContent = status;
   };
 
@@ -2016,7 +2247,7 @@ async function investigateSiteWithBob(siteId) {
     if (resultEl) {
       resultEl.style.display = "block";
       resultEl.innerHTML = `
-        <h4 style="margin-bottom:12px">Investigation Complete — Site ${siteId}</h4>
+        <h4 style="margin-bottom:12px">Investigation Complete ΓÇö Site ${siteId}</h4>
         <p style="white-space:pre-line;font-size:13px">${escapeHtml(explainResult.answer || "")}</p>
         <div style="margin-top:10px">
           <button class="btn btn-sm btn-primary" onclick="loadPage('site-detail','${siteId}')">View Site Detail</button>
@@ -2036,7 +2267,7 @@ async function investigateSiteWithBob(siteId) {
 window.investigateSiteWithBob = investigateSiteWithBob;
 
 
-// ── Bootstrap ──────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ Bootstrap ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // If token exists, try to auto-login by checking session
 (async function init() {
   const token = localStorage.getItem("tg_token");
@@ -2045,9 +2276,9 @@ window.investigateSiteWithBob = investigateSiteWithBob;
       // Try a protected endpoint to check if session is still valid
       const summary = await get("/api/dashboard/summary");
       // If we get here, we need to reconstruct the session from storage
-      // We'll do a quick user fetch — but we don't have user info, so just hide login and load
+      // We'll do a quick user fetch ΓÇö but we don't have user info, so just hide login and load
       // The server enforces auth on every request; if it passes, we're good
-      // We need a way to get the current user — try the users list if admin, else just proceed
+      // We need a way to get the current user ΓÇö try the users list if admin, else just proceed
       // Simplest: just show login again to ensure clean state
       localStorage.removeItem("tg_token");
     } catch {}
@@ -2056,7 +2287,7 @@ window.investigateSiteWithBob = investigateSiteWithBob;
   document.getElementById("app").style.display = "none";
 })();
 
-// ── Protocol Patient Compare ────────────────────────────────────────────────
+// ΓöÇΓöÇ Protocol Patient Compare ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function showPatientCompare(ruleId, ruleName, ruleExpected) {
   const container = document.getElementById(`patient-compare-${ruleId}`);
   if (!container) return;
@@ -2070,7 +2301,7 @@ function showPatientCompare(ruleId, ruleName, ruleExpected) {
   container.style.display = "block";
   container.innerHTML = `
     <div class="patient-compare-panel">
-      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em">PATIENT COMPLIANCE CHECK — ${escapeHtml(ruleName)}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em">PATIENT COMPLIANCE CHECK ΓÇö ${escapeHtml(ruleName)}</div>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <input type="text" id="pc-input-${ruleId}" class="search-input" placeholder="Patient ID (e.g. P-037-019)" style="flex:1">
         <button class="btn btn-primary btn-sm" onclick="runPatientCompare('${ruleId}','${escapeHtml(ruleExpected)}')">Check</button>
@@ -2103,7 +2334,7 @@ async function runPatientCompare(ruleId, ruleExpected) {
       </div>
       <div class="compare-result-row">
         <span class="compare-label">Result:</span>
-        <span class="${compliant ? 'compare-status-compliant' : 'compare-status-non-compliant'}">${compliant ? '✓ COMPLIANT' : '✗ NON-COMPLIANT'}</span>
+        <span class="${compliant ? 'compare-status-compliant' : 'compare-status-non-compliant'}">${compliant ? 'Γ£ô COMPLIANT' : 'Γ£ù NON-COMPLIANT'}</span>
       </div>
       ${issues.length ? `<div style="margin-top:8px">${issues.map(i => `
         <div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">
@@ -2121,7 +2352,7 @@ async function runPatientCompare(ruleId, ruleExpected) {
 }
 window.runPatientCompare = runPatientCompare;
 
-// ── CAPA Approval Workflow ──────────────────────────────────────────────────
+// ΓöÇΓöÇ CAPA Approval Workflow ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 function openCapaApprovalModal(capaId, currentStatus) {
   const canApprove = ["STUDY_MANAGER", "SYSTEM_ADMIN"].includes(_session?.role);
   if (!canApprove) { alert("Only Study Managers and Admins can approve or reject CAPAs."); return; }

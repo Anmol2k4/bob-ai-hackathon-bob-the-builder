@@ -1,5 +1,5 @@
-"""
-TrialGuard AI — Deterministic Synthetic Clinical-Trial Data Generator
+﻿"""
+TrialGuard AI ΓÇö Deterministic Synthetic Clinical-Trial Data Generator
 
 IMPORTANT DISCLAIMER:
 All data in this module is entirely synthetic. No real patient information, real
@@ -39,7 +39,7 @@ def build_demo_state() -> RepositoryState:
     return state
 
 
-# ─── medicines & trials ───────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ medicines & trials ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_medicines() -> list[dict]:
     return [
@@ -111,7 +111,7 @@ def _build_trials() -> list[dict]:
     ]
 
 
-# Mapping: trial_id → which site IDs belong to it and trial-specific overrides
+# Mapping: trial_id ΓåÆ which site IDs belong to it and trial-specific overrides
 TRIAL_SITE_MAP = {
     "TG-101-PH2": list(range(1, 43)),        # S001-S042: existing 42 sites
     "TG-205-PH2": list(range(43, 71)),       # S043-S070: 28 sites (missed-visits focus)
@@ -133,12 +133,12 @@ TRIAL_HERO_OVERRIDES = {
 
 # Demo history for new hero sites
 _DEMO_SITE_HISTORY_EXTRA = {
-    "S058": [46, 54, 61, 69, 76],   # worsening → current 82
-    "S085": [40, 48, 56, 64, 73],   # worsening → current 79
+    "S058": [46, 54, 61, 69, 76],   # worsening ΓåÆ current 82
+    "S085": [40, 48, 56, 64, 73],   # worsening ΓåÆ current 79
 }
 
 
-# ─── users ────────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ users ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_users() -> list[dict]:
     return [
@@ -181,7 +181,7 @@ def _build_users() -> list[dict]:
     ]
 
 
-# ─── sites ────────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ sites ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 LOCATIONS = ["Boston, MA", "Austin, TX", "Toronto, ON", "Dublin, IE", "Chicago, IL",
              "London, UK", "Sydney, AU", "Singapore", "Amsterdam, NL", "Zurich, CH"]
@@ -218,7 +218,7 @@ def _build_sites(rng: random.Random) -> list[dict]:
         sites.append({
             "site_id": site_id,
             "trial_id": "TG-101-PH2",
-            "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
+            "name": f"Site {site_id} ΓÇô {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
             "location": LOCATIONS[index % len(LOCATIONS)],
             "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
             "patient_count": 20 + (index % 15),
@@ -226,6 +226,15 @@ def _build_sites(rng: random.Random) -> list[dict]:
             "created_at": "2026-01-10",
             "profile": profile,
             "synthetic": True,
+            # ΓöÇΓöÇ blacklist fields ΓöÇΓöÇ
+            "is_blacklisted": False,
+            "blacklist_reason": None,
+            "blacklisted_at": None,
+            "blacklisted_by": None,
+            "blacklist_source": None,
+            "blacklist_cleared_by": None,
+            "blacklist_cleared_at": None,
+            "blacklist_clear_reason": None,
         })
     # TG-205-PH2: S043-S070 (28 sites, missed-visits focus)
     for index in range(43, 71):
@@ -234,7 +243,7 @@ def _build_sites(rng: random.Random) -> list[dict]:
         sites.append({
             "site_id": site_id,
             "trial_id": "TG-205-PH2",
-            "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
+            "name": f"Site {site_id} ΓÇô {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
             "location": LOCATIONS[index % len(LOCATIONS)],
             "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
             "patient_count": 18 + (index % 12),
@@ -242,6 +251,15 @@ def _build_sites(rng: random.Random) -> list[dict]:
             "created_at": "2026-02-01",
             "profile": profile,
             "synthetic": True,
+            # ΓöÇΓöÇ blacklist fields ΓöÇΓöÇ
+            "is_blacklisted": False,
+            "blacklist_reason": None,
+            "blacklisted_at": None,
+            "blacklisted_by": None,
+            "blacklist_source": None,
+            "blacklist_cleared_by": None,
+            "blacklist_cleared_at": None,
+            "blacklist_clear_reason": None,
         })
     # TG-310-PH3: S071-S098 (28 sites, prohibited-meds focus)
     for index in range(71, 99):
@@ -250,7 +268,7 @@ def _build_sites(rng: random.Random) -> list[dict]:
         sites.append({
             "site_id": site_id,
             "trial_id": "TG-310-PH3",
-            "name": f"Site {site_id} – {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
+            "name": f"Site {site_id} ΓÇô {LOCATIONS[index % len(LOCATIONS)].split(',')[0]} Clinical Research Unit",
             "location": LOCATIONS[index % len(LOCATIONS)],
             "investigator": INVESTIGATORS[index % len(INVESTIGATORS)],
             "patient_count": 15 + (index % 14),
@@ -258,11 +276,20 @@ def _build_sites(rng: random.Random) -> list[dict]:
             "created_at": "2026-03-01",
             "profile": profile,
             "synthetic": True,
+            # ΓöÇΓöÇ blacklist fields ΓöÇΓöÇ
+            "is_blacklisted": False,
+            "blacklist_reason": None,
+            "blacklisted_at": None,
+            "blacklisted_by": None,
+            "blacklist_source": None,
+            "blacklist_cleared_by": None,
+            "blacklist_cleared_at": None,
+            "blacklist_clear_reason": None,
         })
     return sites
 
 
-# ─── patients ─────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ patients ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_patients(sites: list[dict], rng: random.Random) -> list[dict]:
     patients = []
@@ -289,13 +316,13 @@ def _build_patients(sites: list[dict], rng: random.Random) -> list[dict]:
     return patients
 
 
-# ─── protocol ─────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ protocol ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_protocol() -> list[dict]:
     return [{
         "protocol_id": "TG-101",
         "version": "2.0",
-        "name": "TrialGuard Demonstration Protocol — Phase II Safety Study",
+        "name": "TrialGuard Demonstration Protocol ΓÇö Phase II Safety Study",
         "description": (
             "Synthetic protocol for demonstration of TrialGuard AI clinical trial monitoring. "
             "All rules, thresholds, and requirements are fictional and for demonstration only."
@@ -310,7 +337,7 @@ def _build_protocol() -> list[dict]:
                 "rule_id": "R-001",
                 "domain": "Eligibility",
                 "name": "Patient age eligibility",
-                "expected": "18–65 years inclusive",
+                "expected": "18ΓÇô65 years inclusive",
                 "description": "All enrolled patients must be between 18 and 65 years of age at time of enrollment.",
                 "severity_if_violated": "MAJOR",
             },
@@ -318,7 +345,7 @@ def _build_protocol() -> list[dict]:
                 "rule_id": "R-002",
                 "domain": "Visit Schedule",
                 "name": "Visit 2 window (Day 7)",
-                "expected": "Day 7 ± 2 days from Day 0",
+                "expected": "Day 7 ┬▒ 2 days from Day 0",
                 "description": "Visit 2 must occur between Day 5 and Day 9 relative to the enrollment date (Day 0).",
                 "severity_if_violated": "MINOR",
             },
@@ -358,7 +385,7 @@ def _build_protocol() -> list[dict]:
                 "rule_id": "R-007",
                 "domain": "Visit Schedule",
                 "name": "Visit 3 window (Day 14)",
-                "expected": "Day 14 ± 2 days from Day 0",
+                "expected": "Day 14 ┬▒ 2 days from Day 0",
                 "description": "Visit 3 must occur between Day 12 and Day 16 relative to enrollment.",
                 "severity_if_violated": "MINOR",
             },
@@ -372,16 +399,16 @@ def _build_protocol() -> list[dict]:
             },
         ],
         "visit_schedule": [
-            {"visit_number": 1, "label": "Day 0 – Baseline", "window_days": 0, "window_tolerance": 0},
+            {"visit_number": 1, "label": "Day 0 ΓÇô Baseline", "window_days": 0, "window_tolerance": 0},
             {"visit_number": 2, "label": "Day 7", "window_days": 7, "window_tolerance": 2},
             {"visit_number": 3, "label": "Day 14", "window_days": 14, "window_tolerance": 2},
             {"visit_number": 4, "label": "Day 28", "window_days": 28, "window_tolerance": 3},
-            {"visit_number": 5, "label": "Day 56 – End of Treatment", "window_days": 56, "window_tolerance": 3},
+            {"visit_number": 5, "label": "Day 56 ΓÇô End of Treatment", "window_days": 56, "window_tolerance": 3},
         ],
     }]
 
 
-# ─── visits ───────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ visits ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 ENROLL_DATE = date(2026, 1, 15)
 
@@ -449,7 +476,7 @@ def _missing_rate(site_id: str) -> float:
             "high_frequency": 0.10, "high_prohibited": 0.07, "medium": 0.04, "low": 0.01}.get(p, 0.02)
 
 
-# ─── medications ──────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ medications ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_medications(patients: list[dict], rng: random.Random) -> list[dict]:
     meds = []
@@ -491,7 +518,7 @@ def _build_medications(patients: list[dict], rng: random.Random) -> list[dict]:
     return meds
 
 
-# ─── deviations ───────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ deviations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_deviations(
     sites: list[dict],
@@ -505,7 +532,7 @@ def _build_deviations(
     protocols = _build_protocol()
     deviations = run_deviation_engine(protocols, patients, visits, medications)
 
-    # Build a site→trial_id lookup
+    # Build a siteΓåÆtrial_id lookup
     site_trial = {s["site_id"]: s.get("trial_id", "TG-101-PH2") for s in sites}
 
     # Tag trial_id on every deviation
@@ -545,7 +572,7 @@ def _inject_s037_deviations(deviations: list[dict], patients: list[dict], rng: r
             "site_id": "S037",
             "trial_id": "TG-101-PH2",
             "type": dtype,
-            "description": f"{dtype.replace('_', ' ').title()} — injected for demo narrative",
+            "description": f"{dtype.replace('_', ' ').title()} ΓÇö injected for demo narrative",
             "expected": "100 mg" if dtype == "INCORRECT_DOSE" else "Per protocol",
             "actual": "150 mg" if dtype == "INCORRECT_DOSE" else "Not completed",
             "detected_at": d,
@@ -576,7 +603,7 @@ def _inject_s112_deviations(deviations: list[dict], patients: list[dict], rng: r
             "site_id": "S058",
             "trial_id": "TG-205-PH2",
             "type": dtype,
-            "description": f"{dtype.replace('_', ' ').title()} — injected for TG-205 demo narrative",
+            "description": f"{dtype.replace('_', ' ').title()} ΓÇö injected for TG-205 demo narrative",
             "expected": "Per protocol",
             "actual": "Not completed",
             "detected_at": d,
@@ -608,7 +635,7 @@ def _inject_s218_deviations(deviations: list[dict], patients: list[dict], rng: r
             "site_id": "S085",
             "trial_id": "TG-310-PH3",
             "type": dtype,
-            "description": f"{dtype.replace('_', ' ').title()} — injected for TG-310 demo narrative",
+            "description": f"{dtype.replace('_', ' ').title()} ΓÇö injected for TG-310 demo narrative",
             "expected": "No prohibited medications (Drug X / Drug Y)",
             "actual": "Drug X administered" if dtype == "PROHIBITED_MEDICATION" else "Not completed",
             "detected_at": d,
@@ -633,28 +660,32 @@ def _add_recurrence_flags(deviations: list[dict]) -> None:
             dev.setdefault("risk_factors", []).append("recurrence")
 
 
-# ─── risk scores ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ risk scores ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_risk_scores(sites: list[dict], deviations: list[dict], risk_history: list[dict] | None = None) -> list[dict]:
-    from engines import calculate_site_risk
+    from engines import calculate_site_risk, evaluate_blacklist
     scores = []
     for site in sites:
         risk = calculate_site_risk(site["site_id"], deviations, previous_score=0, risk_history=risk_history)
         risk["calculated_at"] = "2026-05-18"
         risk["trial_id"] = site.get("trial_id", "TG-101-PH2")
         scores.append(risk)
+        # Stamp blacklist state onto the site record in-place for seed consistency
+        score = risk["current_score"]
+        bl = evaluate_blacklist(site["site_id"], score, site)
+        site.update(bl)
     return scores
 
 
-# ─── risk history ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ risk history ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 # Fixed per-site trajectories for the 3 main demo sites (period: score)
 _DEMO_SITE_HISTORY = {
-    "S037": [61, 68, 74, 81, 87],   # worsening trajectory → current 87
-    "S008": [52, 58, 64, 70, 76],   # worsening trajectory → current 76
-    "S021": [48, 54, 60, 65, 71],   # worsening trajectory → current 71
-    "S058": [46, 54, 61, 69, 76],   # worsening trajectory → current 82
-    "S085": [40, 48, 56, 64, 73],   # worsening trajectory → current 79
+    "S037": [61, 68, 74, 81, 87],   # worsening trajectory ΓåÆ current 87
+    "S008": [52, 58, 64, 70, 76],   # worsening trajectory ΓåÆ current 76
+    "S021": [48, 54, 60, 65, 71],   # worsening trajectory ΓåÆ current 71
+    "S058": [46, 54, 61, 69, 76],   # worsening trajectory ΓåÆ current 82
+    "S085": [40, 48, 56, 64, 73],   # worsening trajectory ΓåÆ current 79
 }
 _HISTORY_PERIODS = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"]
 
@@ -711,12 +742,12 @@ def _build_risk_history(sites: list[dict], deviations: list[dict]) -> list[dict]
     return history
 
 
-# ─── capa records ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ capa records ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_capa_records(sites: list[dict], deviations: list[dict]) -> list[dict]:
     from services import generate_capa_record
     records = []
-    # site_id → (trial_id, fixed capa metadata)
+    # site_id ΓåÆ (trial_id, fixed capa metadata)
     high_risk_sites = {
         "S037": ("TG-101-PH2", {"capa_id": "CAPA-0001", "status": "OPEN",        "created_at": "2026-05-18", "updated_at": "2026-05-18"}),
         "S008": ("TG-101-PH2", {"capa_id": "CAPA-0002", "status": "IN_PROGRESS", "created_at": "2026-05-10", "updated_at": "2026-05-15"}),
@@ -737,7 +768,7 @@ def _build_capa_records(sites: list[dict], deviations: list[dict]) -> list[dict]
     return records
 
 
-# ─── audit events ─────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ audit events ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 def _build_audit_events(users: list[dict]) -> list[dict]:
     import uuid

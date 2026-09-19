@@ -1,5 +1,5 @@
-"""
-TrialGuard AI — HTTP Server
+﻿"""
+TrialGuard AI ΓÇö HTTP Server
 Python standard-library HTTP server exposing a REST JSON API.
 """
 from __future__ import annotations
@@ -19,11 +19,11 @@ from database import create_repository
 from models import ROLES, RepositoryState
 from security import hash_password, verify_password
 from synthetic_data import build_demo_state
-from engines import classify_severity, calculate_site_risk, run_deviation_engine
+from engines import classify_severity, calculate_site_risk, run_deviation_engine, evaluate_blacklist, SITE_BLACKLIST_RISK_THRESHOLD
 from bob_boundary import MCPBobProvider, tool_contracts, build_bob_tools
 
 
-# ─── session store ────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ session store ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 _sessions: dict[str, dict] = {}
 
 
@@ -47,7 +47,7 @@ def _delete_session(token: str) -> None:
     _sessions.pop(token, None)
 
 
-# ─── repository singleton ──────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ repository singleton ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 _repo = create_repository()
 if not _repo.all("users"):
     print("No data found - seeding demo data automatically...")
@@ -57,7 +57,7 @@ if not _repo.all("users"):
 _bob_provider = MCPBobProvider(_repo, {"role": "STUDY_MANAGER", "user_id": "server", "site_id": None})
 
 
-# ─── helpers ──────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 def _json(obj: Any) -> bytes:
     return json.dumps(obj, default=str).encode()
 
@@ -108,7 +108,7 @@ def _site_scope(session: dict, site_id: str) -> bool:
     return False
 
 
-# ─── handler ──────────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ handler ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt, *args):  # suppress default stdout noise
@@ -143,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-            pass  # client disconnected before we finished — not a server error
+            pass  # client disconnected before we finished ΓÇö not a server error
 
     def _send_json(self, code: int, obj: Any) -> None:
         self._send(code, _json(obj))
@@ -151,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
     def _send_error(self, code: int, message: str) -> None:
         self._send_json(code, {"error": message, "status": code})
 
-    # ── routing ───────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ routing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -223,6 +223,14 @@ class Handler(BaseHTTPRequestHandler):
             # Sites
             elif path == "/api/sites" and method == "GET":
                 self._list_sites(sess, qs)
+            elif path == "/api/sites/blacklisted" and method == "GET":
+                self._list_blacklisted_sites(sess)
+            elif re.match(r"^/api/sites/[^/]+/blacklist$", path) and method == "POST":
+                site_id = path.split("/")[-2]
+                self._blacklist_site(sess, site_id)
+            elif re.match(r"^/api/sites/[^/]+/clear-blacklist$", path) and method == "POST":
+                site_id = path.split("/")[-2]
+                self._clear_blacklist(sess, site_id)
             elif re.match(r"^/api/sites/[^/]+$", path) and method == "GET":
                 site_id = path.split("/")[-1]
                 self._get_site(sess, site_id)
@@ -312,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_error(404, f"Endpoint not found: {method} {path}")
 
         except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-            pass  # client closed the connection mid-flight — ignore silently
+            pass  # client closed the connection mid-flight ΓÇö ignore silently
         except Exception:
             tb = traceback.format_exc()
             print(f"[ERROR] {method} {path}\n{tb}")
@@ -321,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
             except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
                 pass  # connection already gone, can't send error response
 
-    # ── static file serving ───────────────────────────────────────────────────
+    # ΓöÇΓöÇ static file serving ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _serve_static(self, path: str) -> None:
         static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -344,7 +352,7 @@ class Handler(BaseHTTPRequestHandler):
             data = f.read()
         self._send(200, data, mime)
 
-    # ── auth ──────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ auth ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _login(self) -> None:
         body = self._body()
@@ -377,9 +385,9 @@ class Handler(BaseHTTPRequestHandler):
             _audit(sess["user_id"], "LOGOUT", "session", sess["user_id"])
         self._send_json(200, {"status": "logged_out"})
 
-    # ── dashboard ─────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-    # ── medicines & trials ────────────────────────────────────────────────────
+    # ΓöÇΓöÇ medicines & trials ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_medicines(self, sess: dict) -> None:
         medicines = _repo.all("medicines")
@@ -392,7 +400,7 @@ class Handler(BaseHTTPRequestHandler):
             trials = [t for t in trials if t.get("medicine_id") == medicine_id]
         self._send_json(200, trials)
 
-    # ── dashboard ─────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ dashboard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _dashboard_summary(self, sess: dict, qs: dict) -> None:
         trial_id = (qs.get("trial_id") or [None])[0]
@@ -524,7 +532,7 @@ class Handler(BaseHTTPRequestHandler):
             site_devs = [d for d in deviations if d["site_id"] == sid]
             type_counts = dict(Counter(d["type"] for d in site_devs))
 
-            # Dominant deviation type → human-readable primary signal
+            # Dominant deviation type ΓåÆ human-readable primary signal
             if type_counts:
                 dominant_type = max(type_counts, key=type_counts.get)
                 type_label = dominant_type.replace("_", " ").title()
@@ -537,7 +545,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 primary_signal = "Elevated deviation frequency"
 
-            # Recent deviation count (last 30 days of data — use max date as reference)
+            # Recent deviation count (last 30 days of data ΓÇö use max date as reference)
             all_dates = [d.get("detected_at") or "" for d in site_devs if d.get("detected_at")]
             if all_dates:
                 max_date_str = max(all_dates)
@@ -639,7 +647,7 @@ class Handler(BaseHTTPRequestHandler):
 
         from collections import Counter
 
-        # Pre-group deviations by site once — never call find_many in a loop
+        # Pre-group deviations by site once ΓÇö never call find_many in a loop
         all_devs = _repo.all("deviations")
         devs_by_site: dict[str, list] = {}
         for d in all_devs:
@@ -668,7 +676,7 @@ class Handler(BaseHTTPRequestHandler):
             r = risk_by_site.get(sid, {})
             s = site_map.get(sid, {})
 
-            # Primary signal — use pre-grouped deviations
+            # Primary signal ΓÇö use pre-grouped deviations
             site_devs = devs_by_site.get(sid, [])
             if site_devs:
                 type_counts = Counter(d["type"] for d in site_devs)
@@ -697,7 +705,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(200, {"emerging_sites": emerging[:5]})
 
 
-    # ── protocol ──────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ protocol ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _get_protocol(self, sess: dict) -> None:
         protocols = _repo.all("protocols")
@@ -718,7 +726,7 @@ class Handler(BaseHTTPRequestHandler):
         visits = _repo.all("visits")
         total_patients = max(len(patients), 1)
         total_visits = max(len(visits), 1)
-        # Expected visits = patients × 5 visits (for missed visit calc)
+        # Expected visits = patients ├ù 5 visits (for missed visit calc)
         expected_visits = max(total_patients * 5, 1)
         # Visit 2 and 3 are the windowed ones
         windowed_visits = max(sum(1 for v in visits if v.get("visit_number") in (2, 3)), 1)
@@ -763,7 +771,7 @@ class Handler(BaseHTTPRequestHandler):
             "total_violations": len(deviations),
         })
 
-    # ── sites ─────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ sites ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_sites(self, sess: dict, qs: dict) -> None:
         trial_id = (qs.get("trial_id") or [None])[0]
@@ -779,6 +787,117 @@ class Handler(BaseHTTPRequestHandler):
             result.append({**s, "risk_score": r.get("current_score", 0), "risk_level": r.get("risk_level", "LOW"), "trend": r.get("trend", "STABLE")})
         _audit(sess["user_id"], "VIEW_SITES", "sites")
         self._send_json(200, sorted(result, key=lambda x: -x["risk_score"]))
+
+    def _list_blacklisted_sites(self, sess: dict) -> None:
+        allowed = ("STUDY_MANAGER", "SYSTEM_ADMIN", "AUDITOR")
+        if sess["role"] not in allowed:
+            self._send_error(403, "Not permitted")
+            return
+        sites = _repo.all("sites")
+        risk_scores = {r["site_id"]: r for r in _repo.all("risk_scores")}
+        blacklisted = [s for s in sites if s.get("is_blacklisted")]
+        # STUDY_MANAGER with no site_id = global scope (authorized for all)
+        if sess["role"] == "STUDY_MANAGER" and sess.get("site_id") is not None:
+            # Scoped SM: only sites in their authorized trials
+            coordinator_site = _repo.find_one("sites", "site_id", sess["site_id"])
+            authorized_trial = coordinator_site["trial_id"] if coordinator_site else None
+            blacklisted = [s for s in blacklisted if s.get("trial_id") == authorized_trial]
+        result = [
+            {
+                "site_id": s["site_id"],
+                "name": s["name"],
+                "trial_id": s.get("trial_id"),
+                "risk_score": risk_scores.get(s["site_id"], {}).get("current_score", 0),
+                "is_blacklisted": s["is_blacklisted"],
+                "blacklist_reason": s.get("blacklist_reason"),
+                "blacklisted_at": s.get("blacklisted_at"),
+                "blacklisted_by": s.get("blacklisted_by"),
+                "blacklist_source": s.get("blacklist_source"),
+            }
+            for s in blacklisted
+        ]
+        result.sort(key=lambda x: -x["risk_score"])
+        _audit(sess["user_id"], "VIEW_BLACKLISTED_SITES", "sites")
+        self._send_json(200, result)
+
+    def _blacklist_site(self, sess: dict, site_id: str) -> None:
+        if sess["role"] not in ("STUDY_MANAGER", "SYSTEM_ADMIN"):
+            self._send_error(403, "Only Study Managers and System Admins may blacklist sites")
+            return
+        site = _repo.find_one("sites", "site_id", site_id)
+        if not site:
+            self._send_error(404, "Site not found")
+            return
+        if site.get("is_blacklisted"):
+            self._send_json(200, {"status": "already_blacklisted", "message": f"Site {site_id} is already blacklisted"})
+            return
+        body = self._body()
+        reason = body.get("reason", "").strip()
+        if not reason:
+            self._send_error(400, "reason is required")
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        risk = _repo.find_one("risk_scores", "site_id", site_id) or {}
+        risk_score = risk.get("current_score", 0)
+        changes = {
+            "is_blacklisted": True,
+            "blacklist_reason": reason,
+            "blacklisted_at": now,
+            "blacklisted_by": sess["user_id"],
+            "blacklist_source": sess["role"],
+            "blacklist_cleared_by": None,
+            "blacklist_cleared_at": None,
+            "blacklist_clear_reason": None,
+        }
+        _repo.update("sites", "site_id", site_id, changes)
+        _audit(sess["user_id"], "SITE_BLACKLISTED", "sites", site_id,
+               metadata={"site_id": site_id, "reason": reason, "actor": sess["user_id"],
+                         "role": sess["role"], "source": sess["role"], "risk_score": risk_score})
+        self._send_json(200, {"status": "blacklisted", "site_id": site_id})
+
+    def _clear_blacklist(self, sess: dict, site_id: str) -> None:
+        if sess["role"] not in ("STUDY_MANAGER", "SYSTEM_ADMIN"):
+            self._send_error(403, "Only Study Managers and System Admins may clear blacklists")
+            return
+        site = _repo.find_one("sites", "site_id", site_id)
+        if not site:
+            self._send_error(404, "Site not found")
+            return
+        if not site.get("is_blacklisted"):
+            self._send_json(200, {"status": "not_blacklisted"})
+            return
+        body = self._body()
+        reason = body.get("reason", "").strip()
+        if not reason:
+            self._send_error(400, "reason is required")
+            return
+        now = datetime.now(timezone.utc).isoformat()
+        changes = {
+            "is_blacklisted": False,
+            "blacklist_cleared_by": sess["user_id"],
+            "blacklist_cleared_at": now,
+            "blacklist_clear_reason": reason,
+        }
+        _repo.update("sites", "site_id", site_id, changes)
+        _audit(sess["user_id"], "SITE_BLACKLIST_CLEARED", "sites", site_id,
+               metadata={"site_id": site_id, "cleared_by": sess["user_id"],
+                         "cleared_by_role": sess["role"], "reason": reason, "cleared_at": now})
+        self._send_json(200, {"status": "cleared", "site_id": site_id, "cleared_at": now})
+
+    def _check_blacklist_guard(self, site_id: str, session: dict) -> tuple[int, dict] | None:
+        """Return (403, error_dict) if site is blacklisted and session role is SITE_COORDINATOR, else None."""
+        if session["role"] != "SITE_COORDINATOR":
+            return None
+        site = _repo.find_one("sites", "site_id", site_id)
+        if site and site.get("is_blacklisted"):
+            return (403, {
+                "error": "SITE_BLACKLISTED",
+                "message": (
+                    f"Site {site_id} is currently blacklisted. Write actions are restricted "
+                    "until the blacklist is cleared by a Study Manager or System Admin."
+                ),
+            })
+        return None
 
     def _get_site(self, sess: dict, site_id: str) -> None:
         if not _site_scope(sess, site_id):
@@ -997,7 +1116,7 @@ class Handler(BaseHTTPRequestHandler):
         result = analyze_deviation_pattern(site_id, devs, patients)
         self._send_json(200, result)
 
-    # ── deviations ────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ deviations ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_deviations(self, sess: dict, qs: dict) -> None:
         devs = _repo.all("deviations")
@@ -1079,7 +1198,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "ANALYZE_DEVIATIONS", "deviations", "", {"new_count": len(new_devs)})
         self._send_json(200, {"analyzed": len(new_devs), "deviations": new_devs[:20]})
 
-    # ── capa ──────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ capa ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_capa(self, sess: dict) -> None:
         records = _repo.all("capa_records")
@@ -1096,6 +1215,10 @@ class Handler(BaseHTTPRequestHandler):
         site_id = body.get("site_id")
         if not site_id:
             self._send_error(400, "site_id required")
+            return
+        guard = self._check_blacklist_guard(site_id, sess)
+        if guard:
+            self._send_json(guard[0], guard[1])
             return
         site = _repo.find_one("sites", "site_id", site_id)
         if not site:
@@ -1136,6 +1259,10 @@ class Handler(BaseHTTPRequestHandler):
         if sess["role"] == "SITE_COORDINATOR" and record["site_id"] != sess["site_id"]:
             self._send_error(403, "Access not permitted")
             return
+        guard = self._check_blacklist_guard(record["site_id"], sess)
+        if guard:
+            self._send_json(guard[0], guard[1])
+            return
         body = self._body()
         allowed = {"status", "corrective_actions", "preventive_actions", "priority", "owner"}
         changes = {k: v for k, v in body.items() if k in allowed}
@@ -1144,7 +1271,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "UPDATE_CAPA", "capa_records", capa_id, {"changes": list(changes.keys())})
         self._send_json(200, updated)
 
-    # ── reports ───────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ reports ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _site_report(self, sess: dict, site_id: str) -> None:
         if not _site_scope(sess, site_id):
@@ -1211,7 +1338,7 @@ class Handler(BaseHTTPRequestHandler):
             "disclaimer": "Synthetic data. Not for clinical or regulatory use.",
         })
 
-    # ── audit ─────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ audit ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_audit(self, sess: dict) -> None:
         if sess["role"] not in ("STUDY_MANAGER", "AUDITOR", "SYSTEM_ADMIN"):
@@ -1221,7 +1348,7 @@ class Handler(BaseHTTPRequestHandler):
         events.sort(key=lambda e: e.get("timestamp", ""), reverse=True)
         self._send_json(200, events[:500])
 
-    # ── users ─────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ users ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _list_users(self, sess: dict) -> None:
         if sess["role"] != "SYSTEM_ADMIN":
@@ -1231,7 +1358,7 @@ class Handler(BaseHTTPRequestHandler):
         safe = [{k: v for k, v in u.items() if k != "password_hash"} for u in users]
         self._send_json(200, safe)
 
-    # ── risk recalculate ──────────────────────────────────────────────────────
+    # ΓöÇΓöÇ risk recalculate ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _recalculate_risk(self, sess: dict) -> None:
         if sess["role"] not in ("STUDY_MANAGER", "SYSTEM_ADMIN"):
@@ -1240,18 +1367,32 @@ class Handler(BaseHTTPRequestHandler):
         sites = _repo.all("sites")
         deviations = _repo.all("deviations")
         for site in sites:
-            existing = _repo.find_one("risk_scores", "site_id", site["site_id"])
+            sid = site["site_id"]
+            existing = _repo.find_one("risk_scores", "site_id", sid)
             prev = existing["current_score"] if existing else 0
-            new_risk = calculate_site_risk(site["site_id"], deviations, prev)
+            new_risk = calculate_site_risk(sid, deviations, prev)
             new_risk["calculated_at"] = datetime.now(timezone.utc).isoformat()
             if existing:
-                _repo.update("risk_scores", "site_id", site["site_id"], new_risk)
+                _repo.update("risk_scores", "site_id", sid, new_risk)
             else:
                 _repo.insert("risk_scores", new_risk)
+            # ΓöÇΓöÇ Automatic blacklist evaluation on risk recalculation ΓöÇΓöÇ
+            score = new_risk["current_score"]
+            was_blacklisted = site.get("is_blacklisted", False)
+            bl = evaluate_blacklist(sid, score, site)
+            if bl["is_blacklisted"] and not was_blacklisted:
+                _repo.update("sites", "site_id", sid, bl)
+                _audit(sess["user_id"], "SITE_BLACKLISTED", "sites", sid,
+                       metadata={"site_id": sid, "risk_score": score,
+                                 "threshold": SITE_BLACKLIST_RISK_THRESHOLD,
+                                 "reason": bl["blacklist_reason"],
+                                 "blacklisted_by": "SYSTEM",
+                                 "source": "AUTOMATIC_RISK_THRESHOLD"})
+            # If already blacklisted, do not re-write or create duplicate audit
         _audit(sess["user_id"], "RISK_RECALCULATED", "risk_scores", "all")
         self._send_json(200, {"status": "recalculated", "sites": len(sites)})
 
-    # ── bob ───────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ bob ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _bob_tool(self, sess: dict) -> None:
         body = self._body()
@@ -1296,7 +1437,7 @@ class Handler(BaseHTTPRequestHandler):
         _audit(sess["user_id"], "BOB_QUESTION", "bob", "", {"question": question[:200]})
         self._send_json(200, result)
 
-    # ── search ────────────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ search ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _search(self, sess: dict, qs: dict) -> None:
         q = (qs.get("q") or [""])[0].strip().lower()
@@ -1314,7 +1455,7 @@ class Handler(BaseHTTPRequestHandler):
                 if q in s.get("site_id", "").lower() or q in s.get("name", "").lower() or q in s.get("location", "").lower():
                     sites_results.append({
                         "id": s["site_id"],
-                        "label": s["site_id"] + " — " + s.get("name", ""),
+                        "label": s["site_id"] + " ΓÇö " + s.get("name", ""),
                         "sublabel": s.get("location", ""),
                         "type": "site",
                     })
@@ -1372,7 +1513,7 @@ class Handler(BaseHTTPRequestHandler):
             if q in rule.get("rule_id", "").lower() or q in rule.get("name", "").lower() or q in rule.get("domain", "").lower():
                 rules_results.append({
                     "id": rule["rule_id"],
-                    "label": rule["rule_id"] + " — " + rule.get("name", ""),
+                    "label": rule["rule_id"] + " ΓÇö " + rule.get("name", ""),
                     "sublabel": rule.get("domain", ""),
                     "type": "rule",
                 })
@@ -1387,7 +1528,7 @@ class Handler(BaseHTTPRequestHandler):
             "rules": rules_results,
         })
 
-    # ── notifications ─────────────────────────────────────────────────────────
+    # ΓöÇΓöÇ notifications ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def _notifications(self, sess: dict) -> None:
         risk_scores = _repo.all("risk_scores")
@@ -1464,7 +1605,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 
-# ─── entry point ──────────────────────────────────────────────────────────────
+# ΓöÇΓöÇΓöÇ entry point ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle each request in a separate thread so parallel API calls don't queue."""
